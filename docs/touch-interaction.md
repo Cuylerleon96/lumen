@@ -8,11 +8,38 @@ Grounding: Shapr3D (finger = view, **stylus = create**; two-handed), and mobile-
 (finger occlusion is the core constraint → offset cursor / loupe; separate DOF controls; "1.2-hand"
 mode separation).
 
+## What is implemented today (2026-11-07) — read this before designing on top
+
+Shipped: **tap to select, then Move or Rotate** (`PlateGesture`, `render/SceneView.kt`). It is a
+deliberate *deviation* from the tool-rail model below, and the reasoning matters because it will NOT
+generalise to the tools that genuinely need modes:
+
+- **One finger STARTING on the model = manipulation; one finger starting off it = camera.** The routing
+  decision is made once, when the drag passes the touch-slop threshold, so no mode can trap the camera
+  and the view is never unusable. Two fingers pan/zoom as before.
+- **Move/Rotate is a two-chip row, not a rail.** With a single-object plate there is nothing to switch
+  between, so a rail would be UI that does not yet do anything. The chips appear only once the model is
+  selected — the "gizmo for the selected object" a desktop slicer shows.
+- **The live transform is a shader uniform** (offset + rotation about the footprint centre) applied to
+  the existing vertex buffer, and only the *committed* transform reaches `Placement`. A drag therefore
+  never re-uploads a large mesh, and an interrupted gesture leaves no trace.
+- **A tap selects** (lighter tint + footprint outline) and a tap on empty space deselects.
+- Picking lives in `:core` (`Picking`) and is unit-tested: screen pixel → world ray, ray → bed plane,
+  ray → the model's box — plus a forgiving fallback against the model's *projected* box, because a
+  finger is far wider than a small model on a phone screen.
+
+**What this does NOT cover, and still needs the rail below:** supports, masking/paint, hollow, cut,
+measure, text — every tool that needs a *persistent* active mode, a loupe, or a brush. Do not read the
+shipped placement gesture as "mode separation turned out to be unnecessary".
+
 ## Core principles
 1. **Mode separation is mandatory.** One finger can't orbit *and* paint *and* move. A persistent
    **tool rail** picks the active tool; in a tool mode one finger does the tool, and the camera moves
    to **two-finger gestures** (pan + pinch + twist-to-orbit). In **Navigate** mode, one finger orbits.
    (This is the "pan in view-mode vs move-object in object-mode" separation the research calls for.)
+   *For the placement gesture specifically, shipped 2026-11-07 as the section above describes: the
+   object itself is the target, so the one-finger-on-model / one-finger-off-model split gives the same
+   guarantee without a mode. Every tool below still wants the rail.*
 2. **Solve occlusion explicitly.** Every placement/paint tool uses a **loupe** (magnifier inset above
    the finger showing the exact contact) and/or a **dual-finger offset cursor** (second finger offsets
    the cursor to the midpoint) for precision. The action commits on release, so the loupe is always
