@@ -84,6 +84,7 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 💤 **Low-depth (AI) support generator** · **projection supports** · mini-supports · accordion supports.
 ### D.4 Hollowing & drainage
 - 🔜 **Hollowing** via OpenVDB — **2D / 3D / voxel modes** (Lychee), wall thickness, closing distance, quality.
+  — **✅ enable + wall thickness + closing distance** wired to the engine; 2D/3D/voxel mode choice still todo.
 - 🔜 **Drain holes** (place/drill, diameter/depth) + **hollow blockers** tab.
 - 📋 **Voxel pocket detection** (min pocket side/voxels, remove-below-holes, without-holes) · infill lattice · fill-holes · editable hollow voxels (tube brush).
 ### D.5 Anti-aliasing & masks
