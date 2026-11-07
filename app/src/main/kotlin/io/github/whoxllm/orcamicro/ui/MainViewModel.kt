@@ -482,6 +482,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun cancelResinSlice() {
+        _state.update { it.copy(resinSlice = SliceState.Idle) }
+    }
+
+    fun dismissResinError() {
+        _state.update { it.copy(resinSlice = SliceState.Idle) }
+    }
+
     fun showMessage(message: String) = _state.update { it.copy(message = message) }
 
     fun consumeMessage() = _state.update { it.copy(message = null) }
