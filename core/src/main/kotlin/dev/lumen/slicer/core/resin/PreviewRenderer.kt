@@ -1,4 +1,4 @@
-package io.github.whoxllm.orcamicro.core.resin
+package dev.lumen.slicer.core.resin
 
 /**
  * Builds the RGB565 previews embedded in resin containers (CTB/GOO). The engine's layer mask is a
