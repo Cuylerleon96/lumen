@@ -39,6 +39,18 @@ data class ResinSettings(
     /** Voxel closing distance in mm (fills thin features so the shell stays connected). */
     val hollowingClosingDistanceMm: Double = 0.5,
 
+    // ---- Supports (D.3) ----
+    /** Generate supports (auto + editable). */
+    val supportsEnabled: Boolean = true,
+    /** Relative support-point density (percent of the auto default). */
+    val supportDensityPercent: Int = 100,
+    /** Support head (contact) front diameter in mm. */
+    val supportContactDiameterMm: Double = 0.4,
+    /** Support pillar diameter in mm. */
+    val supportPillarDiameterMm: Double = 0.8,
+    /** XY gap between supports and the model in mm. */
+    val supportObjectGapMm: Double = 0.2,
+
     // ---- Motion (Z) ----
     /** Z distance lifted off the film to peel, in mm. */
     val liftDistanceMm: Double = 5.0,
@@ -89,6 +101,11 @@ data class ResinSettings(
         append(",\"hollowing_enable\":\"${if (hollowing) 1 else 0}\"")
         append(",\"hollowing_min_thickness\":\"$wallThicknessMm\"")
         append(",\"hollowing_closing_distance\":\"$hollowingClosingDistanceMm\"")
+        append(",\"supports_enable\":\"${if (supportsEnabled) 1 else 0}\"")
+        append(",\"support_points_density_relative\":\"$supportDensityPercent\"")
+        append(",\"support_head_front_diameter\":\"$supportContactDiameterMm\"")
+        append(",\"support_pillar_diameter\":\"$supportPillarDiameterMm\"")
+        append(",\"support_object_xy_distance\":\"$supportObjectGapMm\"")
         append('}')
     }
 

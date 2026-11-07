@@ -213,6 +213,14 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
                 NumField("Wall thickness (mm)", s.wallThicknessMm) { viewModel.setResinSettings(s.copy(wallThicknessMm = it)) }
                 NumField("Closing distance (mm)", s.hollowingClosingDistanceMm) { viewModel.setResinSettings(s.copy(hollowingClosingDistanceMm = it)) }
             }
+            HorizontalDivider()
+            SwitchRow("Generate supports", s.supportsEnabled) { viewModel.setResinSettings(s.copy(supportsEnabled = it)) }
+            if (s.supportsEnabled) {
+                IntField("Support density (%)", s.supportDensityPercent) { viewModel.setResinSettings(s.copy(supportDensityPercent = it)) }
+                NumField("Contact diameter (mm)", s.supportContactDiameterMm) { viewModel.setResinSettings(s.copy(supportContactDiameterMm = it)) }
+                NumField("Pillar diameter (mm)", s.supportPillarDiameterMm) { viewModel.setResinSettings(s.copy(supportPillarDiameterMm = it)) }
+                NumField("Object gap (mm)", s.supportObjectGapMm) { viewModel.setResinSettings(s.copy(supportObjectGapMm = it)) }
+            }
             Spacer(Modifier.height(8.dp))
         }
     }
