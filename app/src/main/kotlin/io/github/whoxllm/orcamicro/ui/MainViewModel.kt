@@ -8,9 +8,11 @@ import androidx.lifecycle.viewModelScope
 import io.github.whoxllm.orcamicro.core.Technology
 import io.github.whoxllm.orcamicro.core.gcode.GcodeParser
 import io.github.whoxllm.orcamicro.core.mesh.Mesh
+import io.github.whoxllm.orcamicro.core.mesh.ObjReader
 import io.github.whoxllm.orcamicro.core.mesh.Placement
 import io.github.whoxllm.orcamicro.core.mesh.StlFormatException
 import io.github.whoxllm.orcamicro.core.mesh.StlReader
+import io.github.whoxllm.orcamicro.core.mesh.StlWriter
 import io.github.whoxllm.orcamicro.core.profiles.Catalog
 import io.github.whoxllm.orcamicro.core.profiles.PresetRef
 import io.github.whoxllm.orcamicro.core.profiles.PresetType
@@ -230,9 +232,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val (name, mesh) = withContext(Dispatchers.IO) {
                     val bytes = app.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                         ?: throw StlFormatException("Could not open the file")
-                    val mesh = StlReader.read(bytes)
-                    store.modelFile.writeBytes(bytes)
-                    displayName(uri) to mesh
+                    val name = displayName(uri)
+                    val mesh = if (name.endsWith(".obj", ignoreCase = true)) ObjReader.read(String(bytes)) else StlReader.read(bytes)
+                    store.modelFile.outputStream().use { StlWriter.write(mesh, it) }   // normalize to STL for restore
+                    name to mesh
                 }
                 setModel(name, mesh, centeredPlacement())
                 _state.update { it.copy(lastResult = null) }
