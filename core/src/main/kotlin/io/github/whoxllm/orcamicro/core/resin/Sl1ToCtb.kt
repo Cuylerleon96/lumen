@@ -60,22 +60,22 @@ object Sl1ToCtb {
         CtbWriter.write(out, w, h, masks, params)
     }
 
-    /** Reads `<n>.png` members of the SL1 ZIP in ascending numeric order. */
+    /** Reads `*.png` members of the SL1 ZIP in layer order (names are `<jobid><index>.png`). */
     private fun readLayers(sl1: ByteArray): List<PngDecoder.Image> {
-        val byName = sortedMapOf<Int, PngDecoder.Image>()
+        val named = ArrayList<Pair<String, PngDecoder.Image>>()
         ZipInputStream(ByteArrayInputStream(sl1)).use { zip ->
             var e = zip.nextEntry
             while (e != null) {
-                val name = e.name
-                if (name.endsWith(".png", ignoreCase = true)) {
-                    val idx = name.substringBeforeLast('.').filter { it.isDigit() }.toIntOrNull()
-                    val bytes = ByteArrayOutputStream().also { it -> zip.copyTo(it) }.toByteArray()
-                    if (idx != null) byName[idx] = PngDecoder.decode(bytes)
+                if (e.name.endsWith(".png", ignoreCase = true)) {
+                    val baos = ByteArrayOutputStream()
+                    zip.copyTo(baos)
+                    named += e.name to PngDecoder.decode(baos.toByteArray())
                 }
                 zip.closeEntry()
                 e = zip.nextEntry
             }
         }
-        return byName.values.toList()
+        // PrusaSlicer names layers <jobid><zero-padded index>.png — lexicographic order = layer order.
+        return named.sortedBy { it.first }.map { it.second }
     }
 }
