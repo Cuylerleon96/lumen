@@ -126,12 +126,15 @@ data class ResinSettings(
         append(",\"support_points_density_relative\":\"$supportDensityPercent\"")
         append(",\"support_head_front_diameter\":\"$supportContactDiameterMm\"")
         append(",\"support_pillar_diameter\":\"$supportPillarDiameterMm\"")
-        // PrusaSlicer's SLA config has NO support/object XY-distance key (checked against the
-        // vendored PrintConfig: the distance keys are support_base_safety_distance and
-        // support_max_pillar_link_distance, neither of which is this). The real concept for "keep the
-        // supports off the model" is support_object_elevation -- how far the supports lift the object.
-        // The old key was invented, so the engine reported "Unknown option" and dropped it silently.
-        append(",\"support_object_elevation\":\"$supportObjectGapMm\"")
+        // Deliberately NOT sending supportObjectGapMm. PrusaSlicer's SLA config has no
+        // support/object XY-distance key (checked against the vendored PrintConfig: the only distance
+        // keys are support_base_safety_distance and support_max_pillar_link_distance, neither of which
+        // is this), and mapping the gap onto support_object_elevation is WRONG: that key is the object's
+        // Z lift off the plate (engine default 5 mm), not a contact gap. Sending our 0.2 mm gap there
+        // makes validate() reject the whole print with "Elevation is too low for object" -- the engine
+        // catches it, which is the right outcome but was avoidable. PrusaSlicer attaches supports by
+        // head PENETRATION (support_head_penetration), not by a gap; a gap is a Chitubox/Lychee concept.
+        // So the key stays out and the engine's default elevation applies.
         if (printer != null) {
             append(",\"display_width\":\"${printer.buildWidthMm}\"")
             append(",\"display_height\":\"${printer.buildDepthMm}\"")

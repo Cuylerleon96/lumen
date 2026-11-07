@@ -44,9 +44,13 @@ class ResinEngineJsonTest {
         assertTrue(json.contains("\"support_points_density_relative\":\"80\""))
         assertTrue(json.contains("\"support_pillar_diameter\":\"1.2\""))
         assertTrue(json.contains("\"support_head_front_diameter\":\"0.4\""))
-        // support_object_elevation, not support_object_xy_distance: the latter does not exist in
-        // PrusaSlicer's SLA config, so the engine reported "Unknown option" and dropped it silently.
-        assertTrue(json.contains("\"support_object_elevation\":\"0.3\""))
+        // supportObjectGapMm is deliberately NOT sent. support_object_xy_distance does not exist in
+        // PrusaSlicer's SLA config (we invented it), and mapping the gap onto support_object_elevation
+        // is wrong -- that key is the object's Z lift, and 0.2 mm there makes validate() reject the
+        // print outright ("Elevation is too low for object"). PrusaSlicer attaches supports by head
+        // penetration, not by a gap.
+        assertFalse(json.contains("support_object_elevation"), "the gap is not an elevation: $json")
+        assertFalse(json.contains("support_object_xy_distance"), "that key does not exist: $json")
     }
 
     @Test
