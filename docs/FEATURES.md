@@ -23,6 +23,26 @@ _Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
   the app fetches (raw master), pointing at the release asset; `server/publish.sh` builds, bumps
   `versionCode` from that manifest and stages it, and `lumen-release` cuts the GitHub release and
   uploads the APK. v0.7.2 is the first release cut through this path.
+- 2026-11-07 — **Anycubic PW0/PWS writer (item 3) + the target machines' native format.** Spec audited
+  from UVTools into `docs/research/anycubic-pw.md` (643 lines), then implemented clean-room:
+  `AnycubicPwWriter` (nibble RLE for the `.pw0`/`.pwmx`/`.pwmb` family, bit-plane for `.pws`; versions
+  1/515/516/517/518; FileMark patched last via seek-back) + `Sl1ToPw` (re-containers like `Sl1ToCtb`,
+  holds compressed PNGs and decodes one mask at a time). Wired as the native format for the Anycubic
+  Mono X (`pwmx`) and Mono X 6K (`pwmb`) via `ResinPrinter.fileExtension`, available in the format
+  picker. Two premises to remember: there is **no per-variant magic** (the variant is the filename
+  extension) and **no XOR/encryption** in this format. **Remaining in item 3:** CBDDLP container (its
+  codec `BitPlaneRle` is done), CXDLP, and the `.mdlp`/`.zcode`/`.lgs`/`.phz` backlog.
+- 2026-11-07 — **Two engine-integration bugs found by slicing a real model, plus the shim bug behind
+  them.** (a) The resin model was placed at the bed ORIGIN, but the engine's bed has its origin at a
+  **corner** — models landed clipped in the corner with the top layers empty (700 KB of layers vs
+  3.0 MB centred). Fixed with `ResinPlacement`. (b) The printer's **panel geometry was never sent**, so
+  every printer sliced at the engine's default 120×68 mm / 2560 px panel. (c) The JNI shim applied
+  settings with `cfg.set(key, string)`, which **silently dropped every key except four** — so support
+  settings, hollowing and the panel geometry had never reached the engine; supports appeared only
+  because `supports_enable` defaults to true. Fixed with `set_deserialize_strict` + a relink.
+  `ResinEngineSmokeTest` (on-device) now asserts the raster size against the selected printer and that a
+  bed-centred model keeps its material. **Item 3's sibling gap:** the settings surface is now real —
+  audit which other SLA options still need exposing (elevation, pad_around_object, head penetration).
 - 2026-11-07 — **Anycubic Photon S writer (item 3, first of the remaining formats).** `PhotonSWriter`
   (`.photon`): big-endian 98-byte header, 224×168 preview, per-layer LayerDef + RLE, all streamed one
   layer at a time. Clean-room from the open UVTools spec. Two bugs the tests caught, both worth
@@ -152,7 +172,8 @@ _Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
 - ✅ **GOO** (Elegoo/Phrozen) — clean-room writer (`GooWriter`) built from the open GPL UVTools layout:
   full big-endian header (61 fields), LayerDef table, chunked RLE (magic `0x55`, plain runs, NOT
   checksum), footer. **RLE round-trip unit-tested.** (Blank previews; layer-table offsets correct.)
-- 💤 PW0/PWS/PWMA/PWMS, PHOTON(S), CBDDLP, NANODLP, ZCODE, CXDLP, LGS.
+- ✅ CTB · ✅ GOO · ✅ SL1 · ✅ Anycubic PW0 family (`pw0`/`pwmx`/`pwmb`/`pwms`, and `.pws` bit-plane) · ✅ PhotonS (`.photon`).
+- 💤 CBDDLP (bit-plane codec done, container todo), CXDLP, NANODLP, ZCODE/MDLP, LGS, PHZ.
 
 ## E. Profiles & libraries
 - ✅ **FDM profiles (rich, bundled from Orca):** ~1,545 machine (printer **+ nozzle variants**) · ~7,053 filament · ~3,341 process.
