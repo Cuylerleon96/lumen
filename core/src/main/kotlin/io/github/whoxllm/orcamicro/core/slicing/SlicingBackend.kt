@@ -5,9 +5,10 @@ import java.io.OutputStream
 
 /**
  * One technology-agnostic slice request (ADR 0004). Concrete requests carry what their backend
- * needs — FDM: resolved preset paths; resin: mesh + printer + settings.
+ * needs — FDM: resolved preset paths; resin: mesh + printer + settings. A plain interface (not
+ * sealed) so **any** backend — including experimental ones in other packages — can define its own.
  */
-sealed interface SliceRequest {
+interface SliceRequest {
     val outputName: String
 }
 
