@@ -119,7 +119,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 Support presets; printer discovery/connection.
 
 ## F. Project & platform
-- 📋 **Project format** (save/load a plate with models+settings) — Lychee LYS/LYL; we have none.
+- 🚧 **Project format** (save/load a plate with models+settings) — **✅ `.osproj`** (state+model ZIP;
+  Save/Open buttons on the plate; `ProjectArchive` + `SettingsStore` export/import). Lychee LYS/LYL import still todo.
 - 📋 Model library; recent files.
 - 💤 Cloud sync / shop; CLI mode; viewer app.
 
