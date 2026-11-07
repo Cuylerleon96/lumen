@@ -120,6 +120,15 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 - 📋 **Split to objects/parts** · **auto-split to fit build volume** · hollowing-aware cut + pocket detection.
 - 📋 **Touch**: tap-to-add connector (loupe), drag to move, tap→params sheet, distribute-N, ghost preview, numeric keypad.
 
+## J. Alignment & movement — design: `docs/touch-interaction.md` (§ Alignment & movement)
+- 🚧 Move X/Y/Z + rotate/scale exist (FDM `PlacementSheet`); resin needs the same.
+- 📋 **Auto-Drop** (drop to plate) · **Center on plate** · **place-on-face / lay-flat** · **auto-orient** (min overhang/support, deterministic).
+- 📋 **Scale** uniform/per-axis · % / mm · **fit-to-build-volume** · **Mirror X/Y/Z** · **Duplicate/array/clone**.
+- 📋 **Arrange / auto-arrange** (spacing, rotate-for-arrange, per-plate/all; warn on no-fit) + auto-arrange after clone.
+- 📋 **Align selected / distribute / center** · **multi-select (marquee) group-transform**.
+- 📋 Support structures: FDM **brim** (width/type/ears/gap) · resin **pad/raft** (wall, slope, gap, around).
+- 📋 **Snapping** (grid/plate/objects/faces) + collision warnings · **touch gizmos** (fat handles) + numeric keypad.
+
 ---
 
 ### How to use this file

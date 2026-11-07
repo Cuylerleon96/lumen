@@ -74,6 +74,34 @@ camera state.
   tool type; a pen stroke paints/places, a finger stroke orbits/pans.
 - Palm rejection while a pen is in range; pressure → brush size/strength; hover → preview.
 
+## Alignment & movement toolset
+Movement basics (move/rotate/scale) already exist (FDM `PlacementSheet`); the full arrange/align/orient
+set is designed here — matches OrcaSlicer's Arrange / Alignment / Auto-orient / Auto-Drop + Lychee's
+Arrange / Auto-orient.
+
+**Per object**
+- **Move**: X/Y/Z drag (or gizmo handles) · **drop-to-plate (Auto-Drop)** · **center on plate** ·
+  **place-on-face / lay-flat** · nudge pad (0.1/1 mm) · numeric keypad.
+- **Rotate**: per-axis drag + rotate ring · **align to face/axis** · free rotate · **auto-orient**
+  (minimise overhang/support; deterministic — same result for the same model).
+- **Scale**: uniform / per-axis · **% or mm** · **fit-to-build-volume**.
+- **Mirror**: X / Y / Z. **Duplicate / array / clone** (rows × cols × layers, spacing).
+
+**Multi-object (plate)**
+- **Arrange / auto-arrange**: pack the plate (spacing, allow-rotate-for-arrangement, per-plate or all);
+  warn on objects that can't fit. Auto-arrange after clone.
+- **Align** selected (X/Y centers, edges) · **distribute** evenly · **center coincidence**.
+- **Multi-select**: marquee/box-select, tap-to-add, **group-transform** (move/rotate/scale together).
+
+**Support structures**: FDM **brim** (width/type/ears/gap) · resin **pad/raft** (`pad_enable`, wall
+thickness/height/slope, object gap, around-object).
+
+**Snapping**: grid · plate · other objects · faces/edges; collision warnings.
+
+**Touch mapping**: drag = move · 2-finger twist = rotate · pinch = scale · tap → **fat gizmo handles**
+for axis-locked transforms · long-press = context menu (Duplicate/Mirror/Drop/Lay-flat/Delete) ·
+on-screen keypad for exact mm/°/%.
+
 ## Open questions (to test with real hardware)
 - Orbit in a tool mode: 2-finger twist vs a temporary "hold to orbit" toggle — which feels better?
 - Loupe placement: fixed offset vs follows the finger with a leader line.
