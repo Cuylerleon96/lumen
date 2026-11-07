@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -191,6 +192,13 @@ fun PlacementSheet(
             RotateRow("Z", p.rotationZ) { onChange(p.copy(rotationZ = it)) }
             LabeledSlider("Turn on the bed", "${p.rotationZ.roundToInt()}°", p.rotationZ, -180f..180f) {
                 onChange(p.copy(rotationZ = it.roundToInt().toFloat()))
+            }
+            HorizontalDivider()
+            Text("Mirror", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = p.mirrorX, onClick = { onChange(p.copy(mirrorX = !p.mirrorX)) }, label = { Text("X") })
+                FilterChip(selected = p.mirrorY, onClick = { onChange(p.copy(mirrorY = !p.mirrorY)) }, label = { Text("Y") })
+                FilterChip(selected = p.mirrorZ, onClick = { onChange(p.copy(mirrorZ = !p.mirrorZ)) }, label = { Text("Z") })
             }
             HorizontalDivider()
             LabeledSlider("Scale", "${p.scalePercent.roundToInt()}%", p.scalePercent, 10f..400f) {

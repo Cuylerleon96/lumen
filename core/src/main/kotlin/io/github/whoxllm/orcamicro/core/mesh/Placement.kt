@@ -18,6 +18,10 @@ data class Placement(
     val scalePercent: Float = 100f,
     /** Extra uniform scale for unit conversion (STL has no units; mm = 1, in = 25.4, ft = 304.8). */
     val unitScale: Float = 1f,
+    /** Mirror the model across each axis (applied before rotation). */
+    val mirrorX: Boolean = false,
+    val mirrorY: Boolean = false,
+    val mirrorZ: Boolean = false,
     val centerX: Float = 0f,
     val centerY: Float = 0f,
 ) {
@@ -25,11 +29,14 @@ data class Placement(
     fun orient(mesh: Mesh): Mesh {
         val c = mesh.bounds().center
         val s = scalePercent / 100f * unitScale
+        val mx = if (mirrorX) -1f else 1f
+        val my = if (mirrorY) -1f else 1f
+        val mz = if (mirrorZ) -1f else 1f
         val m = rotationMatrix(rotationX, rotationY, rotationZ)
         return mesh.map { x, y, z, out ->
-            val dx = x - c.x
-            val dy = y - c.y
-            val dz = z - c.z
+            val dx = (x - c.x) * mx
+            val dy = (y - c.y) * my
+            val dz = (z - c.z) * mz
             out[0] = (m[0] * dx + m[1] * dy + m[2] * dz) * s
             out[1] = (m[3] * dx + m[4] * dy + m[5] * dz) * s
             out[2] = (m[6] * dx + m[7] * dy + m[8] * dz) * s
