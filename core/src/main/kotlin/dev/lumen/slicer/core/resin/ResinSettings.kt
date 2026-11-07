@@ -104,7 +104,16 @@ data class ResinSettings(
     }
 
     /** Settings as a JSON object of PrusaSlicer SLA config keys (consumed by the JNI engine bridge). */
-    fun toEngineJson(): String = buildString {
+    /**
+     * The engine's settings JSON.
+     *
+     * [printer] is required for a correct slice: without it the engine keeps its built-in default
+     * panel (120 x 68 mm, 2560 px — the Prusa SL1) and slices every printer at that resolution. The
+     * panel geometry has to travel with the settings because it *is* the bed: `display_width`/
+     * `display_height` in mm are the build area the engine clips against, and
+     * `display_pixels_x`/`display_pixels_y` are the raster size the printer will read back.
+     */
+    fun toEngineJson(printer: ResinPrinter? = null): String = buildString {
         append('{')
         append("\"layer_height\":\"$layerHeightMm\"")
         append(",\"exposure_time\":\"$exposureSec\"")
@@ -118,6 +127,12 @@ data class ResinSettings(
         append(",\"support_head_front_diameter\":\"$supportContactDiameterMm\"")
         append(",\"support_pillar_diameter\":\"$supportPillarDiameterMm\"")
         append(",\"support_object_xy_distance\":\"$supportObjectGapMm\"")
+        if (printer != null) {
+            append(",\"display_width\":\"${printer.buildWidthMm}\"")
+            append(",\"display_height\":\"${printer.buildDepthMm}\"")
+            append(",\"display_pixels_x\":\"${printer.resolutionX}\"")
+            append(",\"display_pixels_y\":\"${printer.resolutionY}\"")
+        }
         append('}')
     }
 

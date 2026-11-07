@@ -79,7 +79,9 @@ _Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
   (`ObjReader`, `ThreeMfReader`, wired into the loader, normalized to STL); STEP/AMF still todo.
 - 📋 **Mirror**, **Array/duplicate**, **"align to face"/lay-flat**, **planar cut**, **boolean CSG**.
   — **✅ Mirror X/Y/Z done** (Placement + sheet). — **✅ boolean CSG done** (`Csg`: union / subtract /
-  intersect, in `:core`; the UI entry point is still todo).
+  intersect, in `:core`; the UI entry point is still todo). — **✅ lay-flat done** (`MeshOrient`:
+  rests the model on its largest flat face, reports the face it chose; the placement-sheet button is
+  still todo). Array/duplicate and planar cut remain.
 - 📋 **Measure / dimension / text** tools.
 - 💤 **Smooth/interpolate + wall smooth** · emboss · warp.
 

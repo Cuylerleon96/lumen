@@ -22,6 +22,7 @@ import dev.lumen.slicer.core.profiles.first
 import dev.lumen.slicer.core.resin.MeshRasterizer
 import dev.lumen.slicer.core.resin.ResinBackend
 import dev.lumen.slicer.core.resin.ResinFormat
+import dev.lumen.slicer.core.resin.ResinPlacement
 import dev.lumen.slicer.core.resin.ResinPrinter
 import dev.lumen.slicer.core.resin.ResinProfile
 import dev.lumen.slicer.core.resin.ResinSettings
@@ -587,9 +588,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val out = withContext(Dispatchers.Default) {
                     val base = model.name.substringBeforeLast('.').ifBlank { "print" }
                     val sl1 = File(app.cacheDir, "$base.sl1")
-                    // The SLA engine's bed is centred on the origin, so place the model there (the
-                    // FDM-bed placement would push it off-plate → empty layers).
-                    val resinPlacement = model.placement.copy(centerX = 0f, centerY = 0f)
+                    // The SLA engine's bed has its origin at a CORNER, not the centre (see
+                    // ResinPlacement): a mesh centred on the origin lands in the corner with its
+                    // negative half clipped off the plate, and the layers above the clipped part come
+                    // out empty. So centre it on the bed in the engine's own frame.
+                    val (bedCx, bedCy) = ResinPlacement.bedCentre(printer)
+                    val resinPlacement = model.placement.copy(centerX = bedCx, centerY = bedCy)
                     val placedMesh = resinPlacement.place(model.mesh)
                     val request = ResinSliceRequest(placedMesh, printer, settings, base, app.cacheDir)
                     sl1.outputStream().use { stream ->

@@ -84,7 +84,7 @@ object ResinBackend : SlicingBackend {
             stl.outputStream().use { StlWriter.write(mesh, it) }
             println("ResinBackend: wrote STL ${stl.absolutePath} (${stl.length()} bytes)")
             onProgress(5, "Slicing (SLA engine)")
-            val rc = SlaEngine.nativeSlice(stl.absolutePath, sl1.absolutePath, r.settings.toEngineJson())
+            val rc = SlaEngine.nativeSlice(stl.absolutePath, sl1.absolutePath, r.settings.toEngineJson(r.printer))
             println("ResinBackend: nativeSlice rc=$rc sl1Bytes=${sl1.length()}")
             if (rc != 0 || !sl1.exists() || sl1.length() == 0L) return null
             onProgress(95, "Writing archive")
