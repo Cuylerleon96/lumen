@@ -42,6 +42,7 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - ✅ Fit-check against build volume.
 - 📋 **Import OBJ, 3MF, STEP, AMF** (Lychee reads all; we read STL only).
 - 📋 **Mirror**, **Array/duplicate**, **"align to face"/lay-flat**, **planar cut**, **boolean CSG**.
+  — **✅ Mirror X/Y/Z done** (Placement + sheet).
 - 📋 **Measure / dimension / text** tools.
 - 💤 **Smooth/interpolate + wall smooth** · emboss · warp.
 
@@ -91,7 +92,9 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 🔜 **Island detection** (per-layer unsupported-region scan) — reliability.
 - 📋 **Mesh repair** (auto-repair broken/non-manifold meshes); fill holes.
 ### D.7 Estimation
-- 📋 **Resin volume/weight/cost + print-time** estimate (fast + real).
+- ✅ **Resin volume/weight/cost + print-time** estimate — `ResinEstimator` (volume→mass→cost) +
+  `ResinSettings.estimatedPrintTimeSec` (per-layer exposure + light-off + motion); shown live in the
+  resin summary; density + price/kg settings.
 ### D.8 Output formats
 - ✅ SL1 / SL1S.
 - ✅ **CTB v3+** — clean-room writer (`CtbWriter`) + SL1→CTB converter (`Sl1ToCtb`); header/RLE7/
@@ -103,7 +106,9 @@ _Last updated: 2026-11-06 (initial full inventory)._
 
 ## E. Profiles & libraries
 - ✅ **FDM profiles (rich, bundled from Orca):** ~1,545 machine (printer **+ nozzle variants**) · ~7,053 filament · ~3,341 process.
-- 📋 **Resin profile DB** (exposures per resin) + **official + community resin DB** + import/export — we only have 6 stubs.
+- ✅ **Resin profile DB (starter)** — 7 built-in resins (Elegoo/Siraya/Anycubic/Generic) with
+  layer height + exposures + density, picker in the resin sheet (`ResinProfile`).
+- 📋 **Resin profile DB (official + community)** + import/export; per-resin calibrated defaults.
 - 📋 **Resin printer DB** (LCD res, pixel pitch, motion caps) — beyond 6 stubs.
 - 📋 **Strategy layer** (goal + material + printer → parameters; HeyGears-style) + per-resin calibrated defaults.
 - 📋 Support presets; printer discovery/connection.
@@ -142,7 +147,8 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 - 📋 **Touch**: tap-to-add connector (loupe), drag to move, tap→params sheet, distribute-N, ghost preview, numeric keypad.
 
 ## J. Alignment & movement — design: `docs/touch-interaction.md` (§ Alignment & movement)
-- 🚧 Move X/Y/Z + rotate/scale exist (FDM `PlacementSheet`); resin needs the same.
+- ✅ Move X/Y/Z + rotate/scale on **both** FDM and resin (shared `PlacementSheet`); resin uses
+  rotate/scale only (origin-centred SLA bed). **Mirror X/Y/Z** done.
 - 📋 **Auto-Drop** (drop to plate) · **Center on plate** · **place-on-face / lay-flat** · **auto-orient** (min overhang/support, deterministic).
 - 📋 **Scale** uniform/per-axis · % / mm · **fit-to-build-volume** · **Mirror X/Y/Z** · **Duplicate/array/clone**.
 - 📋 **Arrange / auto-arrange** (spacing, rotate-for-arrange, per-plate/all; warn on no-fit) + auto-arrange after clone.
@@ -151,7 +157,8 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 - 📋 **Snapping** (grid/plate/objects/faces) + collision warnings · **touch gizmos** (fat handles) + numeric keypad.
 
 ## K. Post-slice analysis & repair (UVTools-class) — design: `docs/research/slicer-feature-discovery.md`
-- 📋 **Issue detection**: islands · overhangs · **resin traps** · **suction cups** · touching bounds · print height · empty layers.
+- 🚧 **Issue detection**: **islands ✅** + **resin traps ✅** (`IslandDetector`, `ResinTrapDetector`,
+  tested) · overhangs · **suction cups** · touching bounds · print height · empty layers.
 - 📋 **Auto-repair**: remove islands ≤ N px · recursive island removal · attach islands down N layers · fill resin traps · ignore/delete per issue.
 - 📋 **Pixel editor** (paint/delete per layer, add drain holes) · **pixel dimming** · **morph** (erode/dilate) · **edit any parameter on a sliced file**.
 
