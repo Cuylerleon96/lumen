@@ -64,6 +64,7 @@ build_qhull()  { cmake_build qhull "$(unpack "$(fetch qhull http://www.qhull.org
 build_libbgcode(){ cmake_build libbgcode "$(unpack "$(fetch libbgcode https://github.com/prusa3d/libbgcode/archive/b5c57c423c958a78dacae468aeee63ab3d2de947.zip)" libbgcode)" -DLibBGCode_BUILD_TESTS=OFF -DLibBGCode_BUILD_CMD_TOOL=OFF -DLibBGCode_BUILD_SHARED=OFF -DLibBGCode_BUILD_STATIC=ON -DCMAKE_INSTALL_LIBDIR=lib; }
 build_blosc()  { cmake_build blosc "$(unpack "$(fetch blosc https://github.com/Blosc/c-blosc/archive/refs/tags/v1.21.5.tar.gz)" blosc)" -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DBUILD_SHARED=OFF -DBUILD_STATIC=ON -DPREFER_EXTERNAL_ZLIB=ON -DCMAKE_INSTALL_LIBDIR=lib; }
 build_nanosvg(){ local s; s=$(unpack "$(fetch nanosvg https://github.com/fltk/nanosvg/archive/abcd277ea45e9098bed752cf9c6875b533c0892f.zip)" nanosvg); mkdir -p "$ORCAMICRO_PREFIX/include/nanosvg"; cp "$s"/src/*.h "$ORCAMICRO_PREFIX/include/nanosvg/"; rm -rf "$s"; }
+build_nlohmann_json(){ cmake_build nlohmann_json "$(unpack "$(fetch nlohmann_json https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.tar.gz)" json)" -DJSON_BuildTests=OFF -DJSON_Install=ON -DCMAKE_INSTALL_LIBDIR=lib; }
 apply_patches() { local src=$1; shift; for p in "$@"; do log "Patching with $(basename "$p")"; patch -d "$src" -p1 --forward --ignore-whitespace --silent < "$p"; done; }
 build_occt() {
     local src; src=$(unpack "$(fetch occt https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V7_6_0.zip)" occt)
@@ -84,7 +85,7 @@ build_occt() {
 }
 build_curl()   { local s; s=$(unpack "$(fetch curl https://curl.se/download/curl-8.6.0.tar.gz)" curl); ( cd "$s"; autotools_env; ./configure --host=aarch64-linux-android --prefix="$ORCAMICRO_PREFIX" --disable-shared --enable-static --without-ssl --without-libidn2 --without-zstd --without-brotli --without-libpsl --without-nghttp2 --disable-ldap --disable-threaded-resolver --with-zlib="$ORCAMICRO_PREFIX"; make -j "$JOBS"; make install ); rm -rf "$s"; }
 
-ALL=(eigen expat png jpeg freetype boost tbb gmp mpfr cgal cereal nlopt curl imath qhull libbgcode blosc nanosvg openvdb occt)
+ALL=(eigen expat png jpeg freetype boost tbb gmp mpfr cgal cereal nlopt curl imath qhull libbgcode blosc nanosvg nlohmann_json openvdb occt)
 run() { local n=$1 stamp="$ORCAMICRO_PREFIX/.stamps/sla-$1"
     local key; key=$({ declare -f "build_$n"; cat "$TOOLCHAIN_FILE"; } | sha256sum | cut -c1-16)
     [ "$(cat "$stamp" 2>/dev/null || true)" = "$key" ] && { log "$n: up to date"; return; }
