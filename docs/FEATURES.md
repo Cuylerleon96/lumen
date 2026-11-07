@@ -37,7 +37,7 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 **Measure / dimension / text** tools.
 - 💤 Smooth/emboss/warp; projection supports.
 
-## C. FDM (via OrcaSlicer engine)
+## C. FDM (via OrcaSlicer engine) — full page surface: `docs/research/complete-feature-surface.md`
 - ✅ **Orca `libslic3r` engine** cross-compiled for arm64 (build in flight on the build host).
 - ✅ ~950 Orca printer profiles (bundled).
 - ✅ Print/filament/process settings editor (the tabbed `SettingsScreen`).
@@ -143,6 +143,20 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 ## L. Calibration & testing — design: `docs/research/slicer-feature-discovery.md`
 - 📋 FDM: temperature · flow rate · pressure advance · retraction · cornering towers · auto-calibration + guide.
 - 📋 Resin: **exposure test** plate · **XP/Cones** calibration artifacts (generated on-device).
+
+## P. Power-user workflow & polish — design: `docs/research/complete-feature-surface.md`
+- 📋 **Preset management**: save/load/import/export · inheritance · **compare presets** · dependencies · compatible printers/materials.
+- 📋 **Physical printer management** + device/network send.
+- 📋 **Project files** (save scene) · **multi-plate** · **per-object settings**.
+- 📋 **Undo/redo** · **autosave + crash recovery**.
+- 📋 **Batch** process scene · batch convert · file queue.
+- 📋 **G-code console + preview** (layer slider, toolpath/speed/flow views).
+- 📋 **Validation warnings** (out-of-bounds, thin walls, overhangs, floating) + "how to fix" · display toggles (printable box/shadow/triangles).
+- 📋 **Settings search** · visibility modes (Simple/Advanced/Develop) · favorites/Frequent.
+- 📋 **Community profile DB** + profile sharing · **CLI** + scripting/plugin hooks · config import/export · check-for-updates.
+
+## Q. Accessibility & ergonomics — design: `docs/research/complete-feature-surface.md`
+- 📋 Large-text scaling · **colorblind-safe** · high-contrast · **left-handed** · touch/gesture parity · haptics · screen-reader labels.
 
 ---
 
