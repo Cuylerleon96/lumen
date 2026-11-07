@@ -224,10 +224,15 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
   rotate/scale only (origin-centred SLA bed). **Mirror X/Y/Z** done.
 - 📋 **Auto-Drop** (drop to plate) · **Center on plate** · **place-on-face / lay-flat** · **auto-orient** (min overhang/support, deterministic).
 - 📋 **Scale** uniform/per-axis · % / mm · **fit-to-build-volume** · **Mirror X/Y/Z** · **Duplicate/array/clone**.
-- 📋 **Arrange / auto-arrange** — fit multiple models on the plate without overlap — **and its
+- 🟡 **Arrange / auto-arrange** — fit multiple models on the plate without overlap — **and its
   settings**: inter-object **spacing**, **rotate-for-arrange** (allowed rotations 0/90/180/270),
   **allow mirroring**, algorithm (grid / spiral / nested), keep-grouped, **per-plate / all-plates**,
   **multi-plate overflow**, warn on no-fit, and auto-arrange after clone.
+  **Core done** (`PlateArranger`): deterministic shelf packing — largest-footprint-first, spacing +
+  margin respected, 90° rotation tried when it helps, and anything that does not fit is *reported*
+  rather than dropped. 9 tests, including an explicit pairwise no-overlap check and a spacing check —
+  the spacing check caught a real overlap bug (the first wrap laid row 2 on top of row 1).
+  **Remaining: the UI** (button + the settings surface) and wiring spots into the model list.
   Build it on the placement frame settled 2026-11-07: the engine's raster is **corner-origin** (world
   (0,0)..(panelW, panelH)), so "on the plate" means the model's centre at half the panel. Arranging
   against the wrong frame clips every object silently — that is exactly the bug that took three
