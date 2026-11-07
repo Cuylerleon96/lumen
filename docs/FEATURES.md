@@ -163,7 +163,25 @@ _Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
 - ✅ **Resin volume/weight/cost + print-time** estimate — `ResinEstimator` (volume→mass→cost) +
   `ResinSettings.estimatedPrintTimeSec` (per-layer exposure + light-off + motion); shown live in the
   resin summary; density + price/kg settings.
-### D.8 Output formats
+### Known bugs (found, not yet fixed)
+
+**The SL1→container converters inherit the engine's TRANSPOSED raster.** PrusaSlicer's SLA layer PNG has
+its **width = the panel's Y pixel count** and height = the X count (measured: the engine default
+2560×1440 emits a 1440×2560 image). Every converter passes those dims through as `resolutionX/Y`, so a
+CTB/GOO/PW for the Mono X 6K declares **3600×5760** on a **5760×3600** panel. Reported by Cuyler as
+"small sections and details are getting messed up and not brought over after slicing". Fix = rotate the
+mask 90° into the target format's orientation and use the printer's own resolutionX/Y in the header.
+**Direction (CW vs CCW) and any flip must be determined empirically** — slice an asymmetric marker and
+look at where it lands — because getting it backwards mirrors the print. The SLA config's
+`display_orientation` key is the likely place the engine encodes its convention.
+
+`Sl1ToPw` additionally **asserts the wrong dimensions** (`width == printer.resolutionX`), so against a
+real engine SL1 it throws every time — i.e. the Anycubic format, the default for both target machines,
+currently cannot produce a file at all. Its test passed because the fixture SL1 was built with the
+printer's own dimensions rather than the engine's transposed ones; **fixtures must reproduce what the
+engine actually emits.**
+
+## D.8 Output formats
 - ✅ SL1 / SL1S.
 - ✅ **CTB v3+** — clean-room writer (`CtbWriter`) + SL1→CTB converter (`Sl1ToCtb`); header/RLE7/
   previews/ExtConfig per the catibo spec, unencrypted (key=0). **Independently validated** (Python
