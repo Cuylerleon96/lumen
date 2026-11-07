@@ -16,3 +16,8 @@ app/src/main/jniLibs/
 *.jks
 build-run.log
 *.log
+
+# The published APK is an artifact, not source: it ships as a GitHub release asset, and the in-app
+# updater reads the URL out of update/info.json (which IS committed). Keep only a local copy for the
+# LAN update server.
+update/app.apk

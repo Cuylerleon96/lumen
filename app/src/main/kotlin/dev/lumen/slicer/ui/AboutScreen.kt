@@ -67,8 +67,10 @@ fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("updates", Context.MODE_PRIVATE) }
     var baseUrl by remember { mutableStateOf(prefs.getString("baseUrl", "") ?: "") }
-    // Auto-default the update server to the build host on the tailnet (MagicDNS) so it needn't be typed.
-    val effectiveBase = baseUrl.ifBlank { "http://build-host:8799" }
+    // Default the manifest to the project's GitHub repo (raw master), so updates come from the same
+    // place the source and the releases live. A local/LAN server can still be typed in as an override
+    // for offline testing.
+    val effectiveBase = baseUrl.ifBlank { "https://raw.githubusercontent.com/Cuylerleon96/lumen/master" }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -106,7 +108,8 @@ fun AboutScreen(onBack: () -> Unit) {
 
             Text("Updates", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Test builds are served from your own machine. Enter its address, then check for updates.",
+                "Updates come from the project's GitHub repository by default. Point this at a local " +
+                    "server address instead to test a build that has not been published yet.",
                 style = MaterialTheme.typography.bodySmall,
             )
             OutlinedTextField(

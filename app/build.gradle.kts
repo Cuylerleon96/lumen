@@ -30,14 +30,16 @@ android {
         targetSdk = 35
         // Overridable so the update server can bump it per publish (server/publish.sh).
         versionCode = providers.environmentVariable("ORCAMICRO_VERSION_CODE").orNull?.toIntOrNull() ?: 1
-        versionName = "0.1.0"
+        // Version NAME has to track the manifest: it is what About shows the user, and it must match
+        // the GitHub release tag (v<version>) the updater points at.
+        versionName = providers.environmentVariable("ORCAMICRO_VERSION_NAME").orNull ?: "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // The engine is built for 64-bit ARM phones only.
             abiFilters += "arm64-v8a"
         }
         buildConfigField("String", "ORCA_VERSION", "\"$orcaTag\"")
-        buildConfigField("String", "SOURCE_URL", "\"https://github.com/cuyler/lumen\"")
+        buildConfigField("String", "SOURCE_URL", "\"https://github.com/Cuylerleon96/lumen\"")
     }
 
     signingConfigs {

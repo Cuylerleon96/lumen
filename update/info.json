@@ -1,0 +1,9 @@
+{
+  "version": "0.7.1",
+  "versionCode": 16,
+  "sha256": "ac1bbce6b33ed256efdfdbad4465ceda4d688ec7310f7ddb8341ef8347e68beb",
+  "url": "https://github.com/Cuylerleon96/lumen/releases/download/v0.7.1/app.apk",
+  "release": "https://github.com/Cuylerleon96/lumen/releases/tag/v0.7.1",
+  "channel": "preview",
+  "notes": "real layer previews (GOO); preview encoder. Pre-release: not yet print-tested."
+}
