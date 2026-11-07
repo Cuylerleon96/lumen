@@ -7,7 +7,7 @@ lives** (the names in the original handoff were guesses and two were wrong):
 |---|---|---|---|
 | **PhotonS** `.photon` | Anycubic Photon S | `AnycubicPhotonSFile.cs` | ✅ done |
 | **PW0 / PWS** | Anycubic Photon Workshop | `AnycubicFile.cs` (2 624 lines, `AnycubicZipFile.cs` for the container) | 📋 todo |
-| **CBDDLP** | Creality LD-002R/H, early Chitubox machines | **`ChituboxFile.cs`** — CBDDLP is the *older Chitubox* container, not a Creality format | 📋 todo |
+| **CBDDLP** | Creality LD-002R/H, early Chitubox machines | **`ChituboxFile.cs`** — CBDDLP is the *older Chitubox* container, not a Creality format. **Same family as our CTB writer**: shares the bit-plane RLE codec, differs in magic + header layout | 📋 todo (cheapest of the three) |
 | **CXDLP** (Creality v1/v2/v4) | Creality Halot, LD-006, … | `CrealityCXDLPFile.cs`, `CrealityCXDLPv1File.cs`, `CrealityCXDLPv4File.cs` | 📋 todo |
 | `.mdlp` | MakerJuice/Massive Dimension | `MDLPFile.cs` | 💤 backlog |
 | `.zcode` / `.zcodex` | UniFormation / Kelant | `ZCodeFile.cs`, `ZCodexFile.cs` | 💤 backlog |
@@ -27,6 +27,32 @@ grep -nE "FieldOrder|FieldEndianness|FieldEncoding|FieldLength|public (uint|usho
 The `[FieldOrder(n)]` attributes **are** the byte layout, in order; `[FieldEndianness(...)]` and
 `[FieldEncoding("UTF-16BE")]` tell you the representation. Read the `Encode`/`Decode` pair for the
 per-layer compression, and `EncodeInternally` for the exact order the pieces are written.
+
+## CBDDLP / Chitubox digest (pulled, not yet implemented)
+
+**Key finding: CBDDLP is the *same Chitubox family* as the CTB writer we already ship.** Its layer
+payload is the **bit-plane RLE** (`BitPlaneRle.DecodePlane`, `RLE8EncodingLimit = 0x7d = 125`) — the
+same codec family as `CtbWriter`, *not* the byte-RLE PhotonS uses. So adding CBDDLP is mostly a
+different magic + header/layer-def layout on top of a codec we have, rather than new compression
+work. (Contrast: PhotonS needed a from-scratch encoder.)
+
+- Magic distinguishes the variants: **CBDDLP `0x12FD0019`**, CTB `0x12FD0086`, CTBv4 `0x12FD0106`,
+  CTBv4_GKtwo `0xFF220810`. Little-endian.
+- Header, in `[FieldOrder]` order: u32 Magic · u32 Version · f32 BedSizeX/Y/Z · u32 Unknown1 ·
+  u32 Unknown2 · f32 TotalHeightMillimeter · f32 LayerHeightMillimeter · f32 LayerExposureSeconds ·
+  f32 BottomExposureSeconds · f32 LightOffDelay · u32 BottomLayersCount · u32 ResolutionX ·
+  u32 ResolutionY · u32 **PreviewLargeOffsetAddress** · u32 **LayersDefinitionOffsetAddress** ·
+  u32 LayerCount · u32 **PreviewSmallOffsetAddress** · u32 PrintTime · u32 ProjectorType ·
+  u32 PrintParametersOffsetAddress · u32 PrintParametersSize · u32 AntiAliasLevel · u16 LightPWM ·
+  u16 BottomLightPWM · u32 **EncryptionKey** · u32 SlicerOffset · u32 SlicerSize.
+- The offsets are absolute file positions, so the writer must lay the file out first and backfill
+  them (previews, then the layer-definition table, then the print-parameters block).
+- Then a print-parameters block: bottom/lift/retract heights and speeds (plus the `*2` variants),
+  rest times, machine-name address+size, anti-alias flag, per-layer settings, timestamps, software
+  version (0x1060300 = CTB v3, 0x1090000 = v4, 0x2000000 = v5), transition layer count, and a v4
+  print-parameters address.
+- **`EncryptionKey > 0` XOR-encrypts the layer data** — the same trap as CTB: writing plaintext
+  layers with a non-zero key produces a file the printer rejects.
 
 ## Creality CXDLP digest (pulled, not yet implemented)
 
