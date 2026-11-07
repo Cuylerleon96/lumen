@@ -44,13 +44,7 @@ def vdb(s):
 def occt(s):
     return re.sub(r'find_package\(OpenCASCADE [0-9.]+ REQUIRED\)', 'find_package(OpenCASCADE REQUIRED)', s)
 
-def src_cmake(s):
-    # libseqarrange (2.9+) needs Z3 and is only linked into the GUI app, never libslic3r — skip it.
-    return s.replace('add_subdirectory(libseqarrange)',
-                     '# add_subdirectory(libseqarrange)  # disabled: needs Z3, GUI-only')
-
 edit("CMakeLists.txt", top)
 edit("cmake/modules/FindOpenVDB.cmake", vdb)
 edit("src/occt_wrapper/CMakeLists.txt", occt)
-edit("src/CMakeLists.txt", src_cmake)
 print("done")

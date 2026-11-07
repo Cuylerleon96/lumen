@@ -65,6 +65,7 @@ build_libbgcode(){ cmake_build libbgcode "$(unpack "$(fetch libbgcode https://gi
 build_blosc()  { cmake_build blosc "$(unpack "$(fetch blosc https://github.com/Blosc/c-blosc/archive/refs/tags/v1.21.5.tar.gz)" blosc)" -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DBUILD_SHARED=OFF -DBUILD_STATIC=ON -DPREFER_EXTERNAL_ZLIB=ON -DCMAKE_INSTALL_LIBDIR=lib; }
 build_nanosvg(){ local s; s=$(unpack "$(fetch nanosvg https://github.com/fltk/nanosvg/archive/abcd277ea45e9098bed752cf9c6875b533c0892f.zip)" nanosvg); mkdir -p "$ORCAMICRO_PREFIX/include/nanosvg"; cp "$s"/src/*.h "$ORCAMICRO_PREFIX/include/nanosvg/"; rm -rf "$s"; }
 build_nlohmann_json(){ cmake_build nlohmann_json "$(unpack "$(fetch nlohmann_json https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.tar.gz)" json)" -DJSON_BuildTests=OFF -DJSON_Install=ON -DCMAKE_INSTALL_LIBDIR=lib; }
+build_z3()     { cmake_build z3 "$(unpack "$(fetch z3 https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.13.0.tar.gz)" z3)" -DZ3_BUILD_LIBZ3_SHARED=OFF -DZ3_BUILD_EXECUTABLE=OFF -DZ3_BUILD_TEST_EXECUTABLES=OFF -DZ3_ENABLE_EXAMPLE_TARGETS=OFF -DZ3_INCLUDE_GIT_DESCRIBE=OFF -DZ3_INCLUDE_GIT_HASH=OFF -DCMAKE_INSTALL_LIBDIR=lib; }
 apply_patches() { local src=$1; shift; for p in "$@"; do log "Patching with $(basename "$p")"; patch -d "$src" -p1 --forward --ignore-whitespace --silent < "$p"; done; }
 build_occt() {
     local src; src=$(unpack "$(fetch occt https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V7_6_0.zip)" occt)
@@ -85,7 +86,7 @@ build_occt() {
 }
 build_curl()   { local s; s=$(unpack "$(fetch curl https://curl.se/download/curl-8.6.0.tar.gz)" curl); ( cd "$s"; autotools_env; ./configure --host=aarch64-linux-android --prefix="$ORCAMICRO_PREFIX" --disable-shared --enable-static --without-ssl --without-libidn2 --without-zstd --without-brotli --without-libpsl --without-nghttp2 --disable-ldap --disable-threaded-resolver --with-zlib="$ORCAMICRO_PREFIX"; make -j "$JOBS"; make install ); rm -rf "$s"; }
 
-ALL=(eigen expat png jpeg freetype boost tbb gmp mpfr cgal cereal nlopt curl imath qhull libbgcode blosc nanosvg nlohmann_json openvdb occt)
+ALL=(eigen expat png jpeg freetype boost tbb gmp mpfr cgal cereal nlopt curl imath qhull libbgcode blosc nanosvg nlohmann_json z3 openvdb occt)
 run() { local n=$1 stamp="$ORCAMICRO_PREFIX/.stamps/sla-$1"
     local key; key=$({ declare -f "build_$n"; cat "$TOOLCHAIN_FILE"; } | sha256sum | cut -c1-16)
     [ "$(cat "$stamp" 2>/dev/null || true)" = "$key" ] && { log "$n: up to date"; return; }
