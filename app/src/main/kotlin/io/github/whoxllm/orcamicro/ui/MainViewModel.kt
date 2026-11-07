@@ -17,9 +17,11 @@ import io.github.whoxllm.orcamicro.core.profiles.PresetType
 import io.github.whoxllm.orcamicro.core.profiles.first
 import io.github.whoxllm.orcamicro.core.resin.MeshRasterizer
 import io.github.whoxllm.orcamicro.core.resin.ResinBackend
+import io.github.whoxllm.orcamicro.core.resin.ResinFormat
 import io.github.whoxllm.orcamicro.core.resin.ResinPrinter
 import io.github.whoxllm.orcamicro.core.resin.ResinSettings
 import io.github.whoxllm.orcamicro.core.resin.ResinSliceRequest
+import io.github.whoxllm.orcamicro.core.resin.Sl1ToCtb
 import io.github.whoxllm.orcamicro.core.resin.Sl1Writer
 import io.github.whoxllm.orcamicro.core.slicing.SliceOutcome
 import io.github.whoxllm.orcamicro.core.settings.BedShape
@@ -450,9 +452,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val out = withContext(Dispatchers.Default) {
                     val base = model.name.substringBeforeLast('.').ifBlank { "print" }
-                    val file = File(app.cacheDir, "$base.sl1")
+                    val sl1 = File(app.cacheDir, "$base.sl1")
                     val request = ResinSliceRequest(model.placed, printer, settings, base, app.cacheDir)
-                    file.outputStream().use { stream ->
+                    sl1.outputStream().use { stream ->
                         val outcome = ResinBackend.slice(stream, request) { percent, text ->
                             _state.update { it.copy(resinSlice = SliceState.Running(percent, text)) }
                         }
@@ -460,7 +462,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             throw IllegalStateException(it.joinToString("; "))
                         }
                     }
-                    file
+                    // Re-container into the printer's native format (CTB for Chitubox-family, else SL1).
+                    if (printer.format == ResinFormat.SL1) {
+                        sl1
+                    } else {
+                        val heightMm = model.size.z.toDouble()
+                        val dst = File(app.cacheDir, "$base.${printer.format.ext}")
+                        dst.outputStream().use { o ->
+                            Sl1ToCtb.convert(
+                                sl1.readBytes(), settings, printer, heightMm,
+                                settings.estimatedPrintTimeSec(heightMm).toInt(), o,
+                            )
+                        }
+                        sl1.delete()
+                        dst
+                    }
                 }
                 _state.update { it.copy(resinSlice = SliceState.Idle, resinOutput = out) }
                 showMessage("Resin slice written: ${out.name}")

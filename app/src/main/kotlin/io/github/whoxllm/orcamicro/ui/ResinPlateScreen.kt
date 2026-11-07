@@ -66,7 +66,7 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
     val openModel = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.openModel(it) }
     }
-    val saveOutput = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+    val saveOutput = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         uri?.let { viewModel.saveResinOutput(it) }
     }
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -93,7 +93,7 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
             IconButton(onClick = { openModel.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Open STL") }
             IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "Resin settings") }
             state.resinOutput?.let { out ->
-                TextButton(onClick = { saveOutput.launch(out.name) }) { Text("Save .sl1") }
+                TextButton(onClick = { saveOutput.launch(out.name) }) { Text("Save .${out.extension.ifBlank { "sl1" }}") }
             }
         },
     ) {
