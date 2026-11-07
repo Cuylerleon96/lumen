@@ -21,3 +21,7 @@ build-run.log
 # updater reads the URL out of update/info.json (which IS committed). Keep only a local copy for the
 # LAN update server.
 update/app.apk
+
+# Session-continuity brief: describes the maintainer's own machines and tooling, so it lives
+# in the private vault, not in a public repo.
+docs/HANDOFF.md

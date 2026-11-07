@@ -16,14 +16,12 @@ lives** (the names in the original handoff were guesses and two were wrong):
 
 ## How to pull a spec (the workflow that worked)
 
-A shallow UVTools clone already exists on the build host — **don't re-clone it**:
+Clone UVTools shallowly and read the spec out of it:
 
 ```bash
-ssh build-host 'cd /mnt/storage/uvtools && git pull --depth 1'   # or re-clone if it's gone
-ssh build-host bash -s <<'SH'
-F=/mnt/storage/uvtools/UVtools.Core/FileFormats/<File>.cs
+git clone --depth 1 https://github.com/sn4k3/UVTools.git /tmp/uvtools
+F=/tmp/uvtools/UVtools.Core/FileFormats/<File>.cs
 grep -nE "FieldOrder|FieldEndianness|FieldEncoding|FieldLength|public (uint|ushort|byte|float|double|string|bool)" $F | head -60
-SH
 ```
 
 The `[FieldOrder(n)]` attributes **are** the byte layout, in order; `[FieldEndianness(...)]` and

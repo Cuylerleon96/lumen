@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the APK, write the in-app update manifest, and stage the artifacts.
-# Run on the build host (the build host) against the build tree (default ~/Projects/mobile-slicer-src).
+# Run on a build host against the build tree (default ~/Projects/mobile-slicer-src).
 #
 # Usage: server/publish.sh <version> [lan_out_dir]
 #   server/publish.sh 0.7.2
@@ -10,7 +10,7 @@
 #   <repo>/update/app.apk     gitignored local copy (the LAN update server serves this one).
 #   <lan_out_dir>/update/*    the same two files, for `server/update_server.py` on the tailnet.
 #
-# Then, from the dev machine (github.com is unreachable from there, hence the split):
+# Then, from a machine that can reach github.com (a dev box may not, hence the split):
 #   1. commit update/info.json and push
 #   2. lumen-release v<version> <commit-sha> <notes.md>    (uploads the APK as a release asset)
 #
@@ -74,7 +74,7 @@ cp "$ROOT/update/info.json" "$OUT/update/info.json"
 
 echo "built and staged v$VER (versionCode $CODE) sha=$SHA"
 echo
-echo "next, from the dev machine:"
+echo "next, from a machine with GitHub access:"
 echo "  git -C ~/Projects/mobile-slicer add update/info.json && git commit -m 'release: v$VER' && lumen-push"
 echo "  lumen-release $TAG <commit-sha> <notes.md>   # uploads app.apk to the GitHub release"
 echo

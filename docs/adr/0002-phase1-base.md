@@ -15,7 +15,7 @@
     `-DORCA_ENGINE_ONLY=ON` (OrcaMicro proposed exactly this).
   - NDK version is correctness-sensitive — pin it and document.
   - AGPL-3.0 throughout.
-- **Build host:** the **build host** (a multi-core CPU, ~7 GB RAM), not the dev machine
+- **Build host:** a dedicated multi-core machine, not a laptop
   (a laptop-class CPU; disk nearly full). Route the repo over and build there.
 - **Next:** clone the fork base on the build host; attempt the engine-only
   cross-build; stand up the JNI bridge with a hardcoded cube.

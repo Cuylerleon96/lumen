@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Mobile-slicer Phase-1 engine build. Detached job for the build host.
-# - caps parallelism (low-RAM RAM box) - logs to build-run.log - writes BUILD.DONE marker
+# Mobile-slicer Phase-1 engine build. Detached job for a build host.
+# - caps parallelism (low-RAM build host) - logs to build-run.log - writes BUILD.DONE marker
 set -uo pipefail
 ROOT="$HOME/Projects/mobile-slicer-src"
 LOG="$ROOT/build-run.log"
@@ -11,7 +11,7 @@ echo "=== mobile-slicer engine build start: $(date) ==="
 export ANDROID_HOME="$HOME/android-sdk"
 export ANDROID_SDK_ROOT="$HOME/android-sdk"
 export ANDROID_NDK_ROOT="$HOME/android-sdk/ndk/27.2.12479018"
-export ORCAMICRO_JOBS=4              # cap for the low-RAM RAM host (avoid OOM)
+export ORCAMICRO_JOBS=4              # cap parallelism on a low-RAM build host (avoid OOM)
 echo "NDK=$ANDROID_NDK_ROOT  JOBS=$ORCAMICRO_JOBS  cores=$(nproc)"
 echo "disk:"; df -h "$HOME" | tail -1
 

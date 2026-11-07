@@ -47,8 +47,8 @@ More formats (PW*/Photon/CXDLP), network print (Moonraker / Chitu LAN), resin &
 filament libraries, cost/time estimation, forks of community profiles.
 
 ## Cross-cutting risks
-- **Disk/build host:** engine build needs tens of GB → use the build host
-  (`build-notes` skill), not the dev machine (nearly full).
+- **Disk/build host:** an engine build needs tens of GB and hours → use a dedicated
+  build machine with real disk, not a laptop.
 - **NDK version sensitivity** (output correctness) — pin and document.
 - **AGPL compliance** at every release.
 - **Maintenance of a large C++ fork** — budget for upstream tracking.

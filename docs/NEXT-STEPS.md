@@ -10,20 +10,21 @@ implemented. **Build native trees into a DISK-BACKED dir — host `/tmp` is a 3.
 Pick up at the JNI wiring + app integration below.
 
 ## 0. In flight right now
-- **FDM engine build** = build host user unit `build.service`, marker
+- **FDM engine build** = build-host user unit `build.service`, marker
   `~/Projects/mobile-slicer-src/BUILD.DONE`, log `~/Projects/mobile-slicer-src/build-run.log`.
-  A dev machine watcher is parked on the marker and pings on completion. (Was ~5075/5109 — OCCT.)
-- Remote build tree = build host `~/Projects/mobile-slicer-src/` (synced with local `app/` `core/`).
+  A watcher is parked on the marker and reports on completion. (Was ~5075/5109 — OCCT.)
+- Remote build tree = `~/Projects/mobile-slicer-src/` on the build host (synced with local `app/` `core/`).
 
 ## 1. WHEN THE ENGINE BUILD LANDS — do this first
-On the build host. Its login shell is **fish** → always `ssh build-host bash -s <<'SH' … SH`.
+On the build host. If its login shell is **fish**, wrap multi-line remote commands:
+  `ssh <build-host> bash -s <<'SH' … SH`.
 1. `cd ~/Projects/mobile-slicer-src`
 2. Validate the resin core unit tests: `./gradlew :core:test` — runs
    `PngEncoderTest`, `Sl1WriterTest`, `MeshRasterizerTest`. **Fix any Kotlin compile errors** (the
    app/core changes have never been compiled).
 3. Build the app:
    `JAVA_HOME=/usr/lib/jvm/java-17-openjdk ANDROID_HOME=$HOME/android-sdk ./gradlew assembleDebug`
-4. Boot the emulator (see the `build-notes` skill), `adb install`, then **capture and
+4. Boot the emulator (see the build-host notes), `adb install`, then **capture and
    send screenshots**: ① technology picker ② FDM plate ③ resin plate — so Cuyler can judge the
    visual match.
 5. **Relay the worker's real output** (Cuyler's standing preference), not just a summary.
@@ -59,7 +60,7 @@ RGB565 previews + SHA-256.
 - Network print (Moonraker / Chitu LAN); resin + filament libraries; cost/time estimation.
 
 ## Backlog from the Lychee gap analysis
-See **`docs/research/lychee-feature-gap.md`** (extracted from Lychee on the build host). Priority after
+See **`docs/research/lychee-feature-gap.md`** (extracted from a Lychee install). Priority after
 the SLA graft: **P0** motion settings (lift/retract/rest) · supports · hollowing+drain; **P1** AA,
 resin/printer profile DB + import/export, island detection, resin/time/cost estimation,
 auto-orient/cut/mirror/array.
@@ -69,7 +70,7 @@ auto-orient/cut/mirror/array.
 - **`docs/research/feature-methods.md`** — method + open reference for each feature (answers "how does Lychee do X").
 - REA (`morluto/rea` MCP) is the optional lens for behavior/format **investigation** (not for lifting engine code).
 
-## Build the app (build host) — WORKING command
+## Build the app — working command
 SDK is a **symlink** `~/android-sdk` → `/mnt/storage/tools/android-sdk` (different fs: `find -xdev`
 misses it). JDK: `/usr/lib/jvm/java-17-openjdk`. The app task **requires** the Orca profiles arg:
 ```bash
@@ -86,6 +87,6 @@ the engine build — no separate `fetch-orca.sh --profiles-only` needed. `:core:
 
 ## Resume pointers
 - Repo: `~/Projects/mobile-slicer/` (this file = `docs/NEXT-STEPS.md`).
-- Remote build tree: build host `~/Projects/mobile-slicer-src/`.
+- Remote build tree: `~/Projects/mobile-slicer-src/` on the build host.
 - Vault: `Projects/Mobile Slicer.md`.
 - Decisions so far: ADR 0001 (resin engine = PrusaSlicer SLA), ADR 0002 (Phase-1 base = fork OrcaMicro).
