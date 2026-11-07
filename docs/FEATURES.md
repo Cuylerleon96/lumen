@@ -170,7 +170,9 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 
 ## L. Calibration & testing — design: `docs/research/slicer-feature-discovery.md`
 - 📋 FDM: temperature · flow rate · pressure advance · retraction · cornering towers · auto-calibration + guide.
-- 📋 Resin: **exposure test** plate · **XP/Cones** calibration artifacts (generated on-device).
+- 🚧 Resin: **exposure test** plate · **XP/Cones** calibration artifacts (generated on-device).
+  — **✅ generator** (`CalibrationModels`: step bar + dimension cube, on-device, "Load calibration model"
+  button); full XP/Cones artifact set still todo.
 
 ## P. Power-user workflow & polish — design: `docs/research/complete-feature-surface.md`
 - 📋 **Preset management**: save/load/import/export · inheritance · **compare presets** · dependencies · compatible printers/materials.
