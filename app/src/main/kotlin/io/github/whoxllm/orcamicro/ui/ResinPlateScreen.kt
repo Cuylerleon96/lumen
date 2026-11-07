@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
@@ -70,6 +71,7 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
         uri?.let { viewModel.saveResinOutput(it) }
     }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showPlacement by rememberSaveable { mutableStateOf(false) }
 
     val printer = state.resinPrinter
     val bed = remember(printer?.name) {
@@ -91,6 +93,9 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
         },
         bottomActions = {
             IconButton(onClick = { openModel.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Open STL") }
+            if (state.model != null) {
+                IconButton(onClick = { showPlacement = true }) { Icon(Icons.Default.Build, "Move / rotate / scale") }
+            }
             IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "Resin settings") }
             state.resinOutput?.let { out ->
                 TextButton(onClick = { saveOutput.launch(out.name) }) { Text("Save .${out.extension.ifBlank { "sl1" }}") }
@@ -121,6 +126,17 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
 
     if (showSettings) {
         ResinSettingsSheet(state, viewModel, onDismiss = { showSettings = false })
+    }
+    val model = state.model
+    if (showPlacement && model != null) {
+        PlacementSheet(
+            model = model,
+            state = state,
+            onChange = viewModel::setPlacement,
+            onCenter = viewModel::centerModel,
+            onDismiss = { showPlacement = false },
+            showPosition = false,
+        )
     }
     ResinSliceDialog(state.resinSlice, viewModel::cancelResinSlice, viewModel::dismissResinError)
     UnitPromptDialog(state, viewModel)

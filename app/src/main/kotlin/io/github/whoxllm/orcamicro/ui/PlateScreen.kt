@@ -161,12 +161,14 @@ private fun ModelInfo(model: ModelState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun PlacementSheet(
+fun PlacementSheet(
     model: ModelState,
     state: UiState,
     onChange: (Placement) -> Unit,
     onCenter: () -> Unit,
     onDismiss: () -> Unit,
+    /** Resin places the model on the origin-centred SLA bed, so only rotate/scale apply. */
+    showPosition: Boolean = true,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val p = model.placement
@@ -199,7 +201,7 @@ private fun PlacementSheet(
                     OutlinedButton(onClick = { onChange(p.copy(scalePercent = preset)) }) { Text("${preset.roundToInt()}%") }
                 }
             }
-            if (bed != null) {
+            if (showPosition && bed != null) {
                 HorizontalDivider()
                 LabeledSlider("Position X", "%.1f mm".format(p.centerX), p.centerX, bed.minX..bed.maxX) {
                     onChange(p.copy(centerX = it))
@@ -209,7 +211,7 @@ private fun PlacementSheet(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                OutlinedButton(onClick = onCenter) { Text("Center") }
+                if (showPosition) OutlinedButton(onClick = onCenter) { Text("Center") }
                 OutlinedButton(onClick = {
                     onChange(Placement(centerX = bed?.centerX ?: p.centerX, centerY = bed?.centerY ?: p.centerY))
                 }) { Text("Reset") }
