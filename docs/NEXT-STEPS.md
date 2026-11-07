@@ -65,6 +65,11 @@ the SLA graft: **P0** motion settings (lift/retract/rest) · supports · hollowi
 resin/printer profile DB + import/export, island detection, resin/time/cost estimation,
 auto-orient/cut/mirror/array.
 
+## Living tracker (update as work lands)
+- **`docs/FEATURES.md`** — every feature (FDM + resin) with status (✅/🚧/🔜/📋/💤). Single source of truth.
+- **`docs/research/feature-methods.md`** — method + open reference for each feature (answers "how does Lychee do X").
+- REA (`morluto/rea` MCP) is the optional lens for behavior/format **investigation** (not for lifting engine code).
+
 ## Resume pointers
 - Repo: `~/Projects/mobile-slicer/` (this file = `docs/NEXT-STEPS.md`).
 - Remote build tree: build host `~/Projects/mobile-slicer-src/`.

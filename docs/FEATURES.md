@@ -1,0 +1,96 @@
+# FEATURES — living tracker (FDM + resin mobile slicer)
+
+**This is the single source of truth for feature status. Update it as work lands.**
+Status marks: **✅ done** · **🚧 in progress** · **🔜 next (P0)** · **📋 todo (P1)** · **💤 backlog (P2)**.
+Method/reference for each *how* → `docs/research/feature-methods.md`. Feature inventory origin →
+`docs/research/lychee-feature-gap.md`.
+
+_Last updated: 2026-11-06 (initial full inventory)._
+
+---
+
+## A. App shell & UX
+- ✅ **Technology picker (FDM vs Resin)** on first launch, persisted, switchable.
+- ✅ **Shared `PlateShell`** (top bar, bottom bar, Slice FAB, 3D plate, snackbar) for both sides.
+- ✅ Themed (`OrcaMicroTheme`, dark/light + dynamic color).
+- 🔜 **FDM-side "switch slicer"** entry (only resin has it today).
+- 📋 Undo/redo across edits; multi-model plate (multiple objects on one plate).
+- 📋 Onboarding / first-run tips; units + language settings (i18n).
+- 💤 Theme editor, splash, print history screen.
+
+## B. Shared model I/O & prep
+- ✅ **Load STL**, place, move/rotate/scale (FDM `PlacementSheet`).
+- ✅ Fit-check against build volume.
+- 📋 **Import OBJ, 3MF, STEP, AMF** (Lychee reads all; we read STL only).
+- 📋 **Mirror**, **Array/duplicate**, **"align to face"/lay-flat**, **planar cut**, **boolean CSG**.
+- 📋 **Measure / dimension / text** tools.
+- 💤 Smooth/emboss/warp; projection supports.
+
+## C. FDM (via OrcaSlicer engine)
+- ✅ **Orca `libslic3r` engine** cross-compiled for arm64 (build in flight on the build host).
+- ✅ ~950 Orca printer profiles (bundled).
+- ✅ Print/filament/process settings editor (the tabbed `SettingsScreen`).
+- ✅ Slice → G-code; layer/toolpath preview; print time + filament estimate.
+- ✅ Tree/normal supports, brim, spiral vase (engine features).
+- 📋 G-code post-processing scripts; per-object settings; calibration wizards (flow/PA/temp).
+- 📋 Network print: Moonraker/Klipper, OctoPrint, PrusaLink, Bambu LAN/dev.
+- 💤 Belt printers; multi-material painting.
+
+## D. Resin (MSLA) — the big build
+### D.1 Engine
+- 🚧/🔜 **PrusaSlicer SLA engine** (`SLAPrint` + `sla::SupportTree` + OpenVDB) as a **second `.so`**
+  — ADR 0003 option **B**. (Currently a naive `MeshRasterizer` stands in.)
+- ✅ **SL1 writer** (config.ini + per-layer grayscale PNG), streaming.
+- ✅ Platform-free grayscale **PNG encoder**.
+### D.2 Print settings
+- ✅ Layer height; exposure; bottom exposure; bottom layer count; light-off (single).
+- 🔜 **Motion: lift distance, retract distance, lift speed, bottom/retract speed** (normal + burn) — blocks any real print.
+- 🔜 **Rest timers** (wait before print / after print / after lift).
+- 📋 Bottom-layer taper (`burnLayerDecreasing`); grey-level compensation (`*Compensation`/`GreyValue`); PWM.
+- 💤 **TSMC two-stage motion**; **tilt/vat-printer motion** (tiltUp/Down cycles/delays/speeds).
+### D.3 Supports
+- 🔜 **Auto-supports** (from the SLA engine) — island/overhang-driven tree supports.
+- 📋 **Manual support editing** (place/move/delete, tips/base sizes, drill-down).
+- 📋 **Support painting** (brush: light/medium/heavy tags, "no-support" faces).
+- 📋 Support params: tip/base diameter, density, angle, contact depth, bracing, **presets**.
+- 💤 Mini-supports; accordion supports.
+### D.4 Hollowing & drainage
+- 🔜 **Hollowing** (wall thickness, closing distance) via OpenVDB.
+- 🔜 **Drain holes** (place/drill, diameter/depth).
+- 📋 Hollow blockers/infill lattice; fill-holes.
+### D.5 Anti-aliasing & masks
+- 📋 **Anti-aliasing** (grayscale edge levels / SSAA) in the writer.
+- 💤 Masks (mask PNG composited per border rules: mode/outset/slice).
+### D.6 Detection & repair
+- 🔜 **Island detection** (per-layer unsupported-region scan) — reliability.
+- 📋 **Mesh repair** (auto-repair broken/non-manifold meshes); fill holes.
+### D.7 Estimation
+- 📋 **Resin volume/weight/cost + print-time** estimate (fast + real).
+### D.8 Output formats
+- ✅ SL1 / SL1S.
+- 📋 **CTB v3+** (variable RLE + XOR key 0x67 + RGB565 previews + SHA-256).
+- 📋 **GOO** (chunked RLE + inverted checksum).
+- 💤 PW0/PWS/PWMA/PWMS, PHOTON(S), CBDDLP, NANODLP, ZCODE, CXDLP, LGS.
+
+## E. Profiles & libraries (resin-specific)
+- 📋 **Resin profile DB** (exposures per resin) + import/export.
+- 📋 **Resin printer DB** (LCD res, pixel pitch, motion caps) — beyond 6 stubs.
+- 📋 Support presets; printer discovery/connection.
+
+## F. Project & platform
+- 📋 **Project format** (save/load a plate with models+settings) — Lychee LYS/LYL; we have none.
+- 📋 Model library; recent files.
+- 💤 Cloud sync / shop; CLI mode; viewer app.
+
+## G. Build / release / infra
+- ✅ Repo scaffold, ADRs, research docs, licensing (AGPL-3.0).
+- 🚧 **FDM engine build** (build host) → then `:core:test` + `assembleDebug` + emulator screenshots.
+- 📋 CI (engine-only build + tests); signed releases; in-app self-update.
+- 📋 iOS build (same engine, SwiftUI).
+- 📋 i18n/localization.
+
+---
+
+### How to use this file
+Move an item's mark as it lands. Add new lines freely. When a "how" question comes up, put the
+algorithm/reference in `docs/research/feature-methods.md` and link it from the line.
