@@ -19,16 +19,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,12 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,9 +56,10 @@ import io.github.whoxllm.orcamicro.render.SceneView
 import kotlin.math.max
 
 /**
- * Resin (MSLA) plate screen. Mirrors the FDM [PlateScreen] shell — same Scaffold, app bars, Slice
- * FAB, 3D build plate, summary card and bottom sheet — so both technologies feel like one app.
- * The naive built-in rasterizer slices to an SL1 archive until the PrusaSlicer SLA engine lands.
+ * Resin (MSLA) plate screen. Uses the same [PlateShell] as the FDM [PlateScreen], so the two
+ * technologies share one visual shell — only the icons, the summary card and the slice engine
+ * differ. The naive built-in rasterizer slices to an SL1 archive until the PrusaSlicer SLA engine
+ * (supports / hollowing / anti-aliasing) is grafted in.
  */
 @Composable
 fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
@@ -76,76 +70,50 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
         uri?.let { viewModel.saveResinOutput(it) }
     }
     var showSettings by rememberSaveable { mutableStateOf(false) }
-    val snackbar = remember { SnackbarHostState() }
-    MessageEffect(state.message, snackbar, viewModel::consumeMessage)
 
     val printer = state.resinPrinter
     val bed = remember(printer?.name) {
         printer?.let { BedShape.rectangle(0f, 0f, it.buildWidthMm.toFloat(), it.buildDepthMm.toFloat()) }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("OrcaMicro")
-                        Text(
-                            state.model?.name ?: "No model",
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                },
-                actions = {
-                    TextButton(onClick = { viewModel.switchTechnology() }) { Text("Switch") }
-                    if (state.model != null) {
-                        IconButton(onClick = viewModel::removeModel) { Icon(Icons.Default.Delete, "Remove model") }
-                    }
-                    IconButton(onClick = { viewModel.navigate(Screen.ABOUT) }) { Icon(Icons.Default.Info, "About") }
-                },
-            )
-        },
-        bottomBar = {
-            BottomAppBar(
-                actions = {
-                    IconButton(onClick = { openModel.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Open STL") }
-                    IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "Resin settings") }
-                    state.resinOutput?.let { out ->
-                        TextButton(onClick = { saveOutput.launch(out.name) }) { Text("Save .sl1") }
-                    }
-                },
-                floatingActionButton = {
-                    ExtendedFloatingActionButton(
-                        onClick = viewModel::sliceResin,
-                        icon = { Icon(Icons.Default.PlayArrow, null) },
-                        text = { Text("Slice") },
-                    )
-                },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            val renderer = remember { PlateRenderer() }
-            val framed = remember { arrayOfNulls<BedShape>(1) }
-            SceneView(renderer, Modifier.fillMaxSize()) { r ->
-                if (bed != null && framed[0] != bed) {
-                    r.camera.frame(bed.centerX, bed.centerY, 0f, max(bed.width, bed.depth) * 0.6f)
-                    framed[0] = bed
-                }
-                r.setBed(bed, (printer?.buildHeightMm ?: 200.0).toFloat())
-                r.setModel(state.model?.placed, true)
+    PlateShell(
+        title = "OrcaMicro",
+        modelName = state.model?.name,
+        onSlice = viewModel::sliceResin,
+        message = state.message,
+        onMessageConsumed = viewModel::consumeMessage,
+        topActions = {
+            TextButton(onClick = { viewModel.switchTechnology() }) { Text("Switch") }
+            if (state.model != null) {
+                IconButton(onClick = viewModel::removeModel) { Icon(Icons.Default.Delete, "Remove model") }
             }
-            ResinSummary(state, onClick = { showSettings = true }, modifier = Modifier.align(Alignment.TopCenter))
-            if (state.model == null) {
-                Card(Modifier.align(Alignment.Center).padding(32.dp)) {
-                    Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Open an STL file to start", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = { openModel.launch(arrayOf("*/*")) }) { Text("Open STL") }
-                    }
+            IconButton(onClick = { viewModel.navigate(Screen.ABOUT) }) { Icon(Icons.Default.Info, "About") }
+        },
+        bottomActions = {
+            IconButton(onClick = { openModel.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Open STL") }
+            IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "Resin settings") }
+            state.resinOutput?.let { out ->
+                TextButton(onClick = { saveOutput.launch(out.name) }) { Text("Save .sl1") }
+            }
+        },
+    ) {
+        val renderer = remember { PlateRenderer() }
+        val framed = remember { arrayOfNulls<BedShape>(1) }
+        SceneView(renderer, Modifier.fillMaxSize()) { r ->
+            if (bed != null && framed[0] != bed) {
+                r.camera.frame(bed.centerX, bed.centerY, 0f, max(bed.width, bed.depth) * 0.6f)
+                framed[0] = bed
+            }
+            r.setBed(bed, (printer?.buildHeightMm ?: 200.0).toFloat())
+            r.setModel(state.model?.placed, true)
+        }
+        ResinSummary(state, onClick = { showSettings = true }, modifier = Modifier.align(Alignment.TopCenter))
+        if (state.model == null) {
+            Card(Modifier.align(Alignment.Center).padding(32.dp)) {
+                Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Open an STL file to start", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { openModel.launch(arrayOf("*/*")) }) { Text("Open STL") }
                 }
             }
         }

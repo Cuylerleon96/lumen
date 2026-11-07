@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,26 +21,20 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,81 +60,55 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
         uri?.let { viewModel.openModel(it) }
     }
     var showPlacement by rememberSaveable { mutableStateOf(false) }
-    val snackbar = remember { SnackbarHostState() }
-    MessageEffect(state.message, snackbar, viewModel::consumeMessage)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("OrcaMicro")
-                        Text(
-                            state.model?.name ?: "No model",
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                },
-                actions = {
-                    if (state.model != null) {
-                        IconButton(onClick = viewModel::removeModel) { Icon(Icons.Default.Delete, "Remove model") }
-                    }
-                    IconButton(onClick = { viewModel.navigate(Screen.ABOUT) }) { Icon(Icons.Default.Info, "About") }
-                },
-            )
-        },
-        bottomBar = {
-            BottomAppBar(
-                actions = {
-                    IconButton(onClick = { openModel.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Open STL") }
-                    IconButton(onClick = { showPlacement = true }, enabled = state.model != null) {
-                        Icon(Icons.Default.Edit, "Move, rotate and scale")
-                    }
-                    IconButton(onClick = { viewModel.navigate(Screen.PRESETS) }) { Icon(Icons.Default.Build, "Printer and presets") }
-                    IconButton(onClick = { viewModel.navigate(Screen.SETTINGS) }) { Icon(Icons.Default.Settings, "Print settings") }
-                    if (state.lastResult != null) {
-                        TextButton(onClick = { viewModel.navigate(Screen.PREVIEW) }) { Text("Preview") }
-                    }
-                },
-                floatingActionButton = {
-                    ExtendedFloatingActionButton(
-                        onClick = viewModel::slice,
-                        icon = { Icon(Icons.Default.PlayArrow, null) },
-                        text = { Text("Slice") },
-                    )
-                },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            val renderer = remember { PlateRenderer() }
-            // Plain holder, not state: framing happens in the view update and must not recompose.
-            val framedBed = remember { arrayOfNulls<BedShape>(1) }
-            SceneView(renderer, Modifier.fillMaxSize()) { r ->
-                val bed = state.bed
-                if (bed != null && framedBed[0] != bed) {
-                    r.camera.frame(bed.centerX, bed.centerY, 0f, max(bed.width, bed.depth) * 0.6f)
-                    framedBed[0] = bed
-                }
-                r.setBed(bed, state.printableHeight)
-                r.setModel(state.model?.placed, state.model?.fits ?: true)
+    PlateShell(
+        title = "OrcaMicro",
+        modelName = state.model?.name,
+        onSlice = viewModel::slice,
+        message = state.message,
+        onMessageConsumed = viewModel::consumeMessage,
+        topActions = {
+            if (state.model != null) {
+                IconButton(onClick = viewModel::removeModel) { Icon(Icons.Default.Delete, "Remove model") }
             }
-            PresetSummary(state, onClick = { viewModel.navigate(Screen.PRESETS) }, modifier = Modifier.align(Alignment.TopCenter))
-            val model = state.model
-            if (model == null) {
-                Card(Modifier.align(Alignment.Center).padding(32.dp)) {
-                    Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Open an STL file to start", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = { openModel.launch(arrayOf("*/*")) }) { Text("Open STL") }
-                    }
-                }
-            } else {
-                ModelInfo(model, Modifier.align(Alignment.BottomStart).padding(12.dp))
+            IconButton(onClick = { viewModel.navigate(Screen.ABOUT) }) { Icon(Icons.Default.Info, "About") }
+        },
+        bottomActions = {
+            IconButton(onClick = { openModel.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Open STL") }
+            IconButton(onClick = { showPlacement = true }, enabled = state.model != null) {
+                Icon(Icons.Default.Edit, "Move, rotate and scale")
             }
+            IconButton(onClick = { viewModel.navigate(Screen.PRESETS) }) { Icon(Icons.Default.Build, "Printer and presets") }
+            IconButton(onClick = { viewModel.navigate(Screen.SETTINGS) }) { Icon(Icons.Default.Settings, "Print settings") }
+            if (state.lastResult != null) {
+                TextButton(onClick = { viewModel.navigate(Screen.PREVIEW) }) { Text("Preview") }
+            }
+        },
+    ) {
+        val renderer = remember { PlateRenderer() }
+        // Plain holder, not state: framing happens in the view update and must not recompose.
+        val framedBed = remember { arrayOfNulls<BedShape>(1) }
+        SceneView(renderer, Modifier.fillMaxSize()) { r ->
+            val bed = state.bed
+            if (bed != null && framedBed[0] != bed) {
+                r.camera.frame(bed.centerX, bed.centerY, 0f, max(bed.width, bed.depth) * 0.6f)
+                framedBed[0] = bed
+            }
+            r.setBed(bed, state.printableHeight)
+            r.setModel(state.model?.placed, state.model?.fits ?: true)
+        }
+        PresetSummary(state, onClick = { viewModel.navigate(Screen.PRESETS) }, modifier = Modifier.align(Alignment.TopCenter))
+        val model = state.model
+        if (model == null) {
+            Card(Modifier.align(Alignment.Center).padding(32.dp)) {
+                Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Open an STL file to start", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { openModel.launch(arrayOf("*/*")) }) { Text("Open STL") }
+                }
+            }
+        } else {
+            ModelInfo(model, Modifier.align(Alignment.BottomStart).padding(12.dp))
         }
     }
 
