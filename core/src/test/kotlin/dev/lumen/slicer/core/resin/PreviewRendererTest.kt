@@ -1,4 +1,4 @@
-package io.github.whoxllm.orcamicro.core.resin
+package dev.lumen.slicer.core.resin
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
