@@ -1,85 +1,92 @@
-# Mobile Slicer (working title)
+# Lumen
 
-An open-source **mobile** slicer covering **both FDM and resin (MSLA/SLA)** —
-on-device, offline, no cloud, no account. The gap: every existing mobile slicer
-port is **FDM-only**, and the mature resin slicers (Lychee, Chitubox, VoxelDance)
-are closed-source. This project is the union.
+An open-source **mobile 3D-print slicer for both FDM and resin (MSLA)** — on-device, offline, no
+cloud, no account.
 
-- **FDM engine:** reuse **OrcaSlicer's `libslic3r`** (engine-only) — already
-  proven on Android by OrcaMicro/SliceBeam.
-- **Resin engine:** reuse **PrusaSlicer's SLA backend (`SLAPrint`)** — the only
-  mature open-source resin pipeline (Orca has no resin, and won't).
-- **Formats:** reference **UVTools** (C#) + **mslicer** (Rust) + **catibo** (docs).
-- **License:** **AGPL-3.0** (inherited — non-negotiable; see `docs/research/licenses.md`).
+The gap this fills: every existing mobile slicer port is **FDM-only**, and the mature resin slicers
+(Lychee, Chitubox, VoxelDance) are closed-source. Lumen is one app that does both, with
+FDM / resin / experimental methods as **pluggable slicing backends** behind a single plate / settings /
+preview UI.
 
-Status: **research phase** (2026-11-06). Nothing compiled yet. See `ROADMAP.md`.
+- **License:** **AGPL-3.0-or-later** (inherited from the engines — non-negotiable; see
+  `docs/research/licenses.md`).
+- **Platform:** Android (arm64-v8a), min SDK 26, Kotlin + Jetpack Compose + OpenGL ES.
+- **Package:** `dev.lumen.slicer`.
+
+## Status
+
+**Working app, v0.7.1, running on a Pixel 6.** Both engines are cross-compiled and shipped as
+prebuilt `.so`s; the app builds, slices and exports. This is past the prototype stage — the in-app
+updater, project save/load, the profile catalog and the format writers are all in use.
+
+- **20 features done** — estimation · resin placement (move/rotate/scale/mirror/fit) · resin profile
+  DB · island detection · resin-trap detection · layer repair (speck + pinhole) · OBJ import ·
+  3MF import · anti-aliasing · **CTB writer** · **GOO writer** (+ SL1→CTB / SL1→GOO converters) ·
+  output-format picker · hollowing · support settings · project save/load · calibration generator ·
+  model library/recents · real RGB565 previews · Elegoo Saturn (4K) + Saturn 2 (8K) profiles.
+- **In progress** — **drain holes**: the boolean CSG (`Csg`) and the drilling (`DrainHoles`) are done
+  and tested in `:core`; the tap-to-place touch UI is not.
+- **Tracker:** `docs/FEATURES.md` is the single source of truth for feature status, with the
+  remaining work ordered. `docs/HANDOFF.md` is the session-to-session brief.
+- **Tests:** 91 passing tests in `:core` (`./gradlew -PcoreOnly :core:test`); 2 more run only when
+  `-PorcaResourcesDir=` points at an OrcaSlicer profile checkout.
+
+## Engines
+
+Both engines are AGPL, cross-compiled for `arm64-v8a` with **NDK r27c**, and shipped prebuilt in
+`app/src/main/jniLibs/arm64-v8a/` so a normal app build needs no NDK:
+
+- **FDM — OrcaSlicer 2.4.2 `libslic3r`** → `liborcamicro_engine.so` (JNI shim `native/bridge/jni.cpp`).
+- **Resin — PrusaSlicer 2.9.7 SLA `libslic3r`** → `libsla_engine.so` (JNI shim `native/sla/sla_jni.cpp`).
+
+Two engines rather than one grafted fork (ADR 0003-B): Bambu Studio stripped the SLA sources before
+OrcaSlicer forked, so grafting PrusaSlicer's `SLAPrint` back into Orca's `libslic3r` means
+reconciling the whole Orca↔Prusa type drift. A second engine is far less work, and both are AGPL so
+vendoring is licensed. Each engine runs **in its own process**, so a native crash cannot take the UI
+down.
 
 ## Repo layout
+
 ```
-mobile-slicer/
-├── README.md                 ← you are here
-├── ROADMAP.md                ← phased plan
-├── docs/
-│   ├── architecture.md       ← proposed system design
-│   ├── adr/                  ← architecture decision records
-│   └── research/
-│       ├── prior-art.md      ← existing slicers + mobile ports (what to reuse)
-│       ├── resin-formats.md  ← MSLA output formats + encodings (deep dive)
-│       └── licenses.md       ← AGPL/GPL implications
-└── (src/ TBD — not started)
+app/      Kotlin + Jetpack Compose UI (plate, settings, preview, updater)
+core/     pure Kotlin, JVM-unit-tested: mesh, placement, CSG, resin pipeline,
+          settings model, profile catalog, G-code parsing
+native/   engine cross-builds + JNI bridges (bridge/ = FDM, sla/ = resin)
+docs/     FEATURES.md (tracker) · HANDOFF.md · architecture · adr/ · research/
+server/   LAN update server + publish script
+update/   update manifest (info.json) + the published APK
 ```
 
-## The one-paragraph plan
-Base the native engine on a **single `libslic3r` fork that carries both the
-OrcaSlicer FDM features and PrusaSlicer's SLA module** (they share the Slic3r
-ancestry and core types). Cross-compile engine-only for arm64 (Android NDK, then
-iOS). Emit **SL1** first (ZIP of grayscale PNGs + `config.ini`) — the open,
-documented resin container — then add **CTB** and **GOO** writers (≈95% of
-printers). Wrap in a Kotlin/Compose (Android) / SwiftUI (iOS) touch UI. Reuse
-PrusaSlicer's Voronoi tree supports + hollowing; reuse UVTools/mslicer algorithms
-for the format writers.
+## Building
 
-## ⚠️ Environment note
-Build host disk is at **93% (30 GB free)**. A full slicer engine build
-(Boost/TBB/CGAL/OCCT/OpenVDB + libslic3r + NDK) needs **tens of GB**. Free space
-on the build host / build host before starting engine work (see the
-`build-notes` skill — builds belong there, not on the slow dev machine).
+The engine cross-builds are heavy (tens of GB, hours) and want a many-core host with a real disk;
+they are already done, and their outputs ship as prebuilt `.so`s. Day-to-day app builds:
 
-## Quick decisions locked so far
-- **License:** AGPL-3.0-or-later.
-- **Phase-1 base (ADR 0002):** **fork `whoxllm/OrcaMicro`** — OrcaSlicer 2.4.2
-  engine on Android, AGPL, ~950 FDM profiles, clean module split.
-- **Resin engine source (ADR 0001):** PrusaSlicer SLA grafted into that engine.
-- **First resin output format:** SL1 (open) → then CTB, then GOO.
-- **Local-only for now**; no remote/deploy.
-
-## Progress (2026-11-06)
-- **FDM engine build in flight** on the build host (fork of `whoxllm/OrcaMicro`,
-  OrcaSlicer 2.4.2, NDK r27c). Deps cross-compiled; OCCT compiling (~2400/5100).
-- **App — first-run technology choice shipped:** `TechnologyScreen` picks **FDM or
-  resin**, persisted, routes into that slicer's flow; a "Change slicer" affordance
-  switches later. New `Screen.TECHNOLOGY` / `Screen.RESIN`; `UiState`/`SavedState`
-  carry the choice.
-- **Resin core shipped** (`core/…/resin/`): `ResinPrinter`, `ResinSettings`,
-  `LayerImage`, a platform-free **grayscale PNG encoder**, the **SL1 writer**
-  (streams one layer at a time), and a **naive mesh→layer rasterizer**; unit tests.
-  Format + rasterizer logic validated via a Python mirror (PIL + zipfile open the
-  emitted SL1 cleanly).
-- Resin UI: `ResinPlateScreen` — pick printer, set exposures, load STL, **slice to
-  .sl1**, save via the system picker.
-- **Pending:** Kotlin compile/`assembleDebug` (build host busy), FDM-side "switch
-  slicer" entry, and grafting PrusaSlicer's SLA engine (supports/hollowing/AA).
-
-## Fork base — OrcaMicro structure (what we extend)
+```bash
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk \
+ANDROID_HOME=$HOME/android-sdk ANDROID_SDK_ROOT=$HOME/android-sdk \
+./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx3072m \
+  -PorcaResourcesDir="$PWD/native/build/orcaslicer/resources" :core:test assembleDebug
 ```
-app/     Kotlin + Jetpack Compose + OpenGL ES 2 (the UI)        → add resin UI
-core/    pure Kotlin: STL, placement, ORCASlicer profiles,      → add resin model
-         settings, G-code parsing (JVM-unit-tested)                types + SL1/CTB writers
-native/  builds OrcaSlicer libslic3r for Android + JNI bridge   → add PrusaSlicer SLA
-         (liborcamicro_engine.so); engine runs in its OWN process  (SLAPrint + OpenVDB)
-docs/    design.md, plan.md (upstream)
-```
-Engine = **OrcaSlicer 2.4.2**, NDK **r27c**, Android 9+/arm64, **no bamboo**, engines
-isolated in a separate process (native crash ≠ app crash). Native build "takes a
-few hours from scratch" → **build host**.
-Reference docs to read upstream: `docs/design.md`, `docs/plan.md`.
+
+- **Pure-logic work** needs neither the NDK nor the Android SDK: `./gradlew -PcoreOnly :core:test`
+  builds and tests just `:core` in about 20 seconds.
+- **Engine rebuilds** live in `native/` and are documented in `docs/HANDOFF.md`; the pinned NDK is
+  `27.2.12479018`.
+
+## Lineage & credits
+
+Lumen descends from **`whoxllm/OrcaMicro`** (OrcaSlicer on Android), which in turn builds on
+**OrcaSlicer** → **Bambu Studio** → **PrusaSlicer** → **Slic3r**. Format writers are **clean-room**
+implementations from open specifications, with **UVTools** (GPL) and **catibo** used as references for
+byte layouts — never copied. The optional Bambu network plugin is deliberately **excluded**: it is
+built on non-free BambuLab libraries.
+
+Everything here is AGPL-3.0-or-later. If you run a modified Lumen as a network service, the AGPL
+requires you to offer the source.
+
+## Roadmap
+
+The ordered remaining work lives in `docs/FEATURES.md`. Headline gaps: drain-hole placement UI,
+interactive support add/edit/paint, the remaining output formats (PW0/PWS/PhotonS/CBDDLP), the touch
+tool-rail + loupe, and FDM calibration towers / G-code post-processing.
