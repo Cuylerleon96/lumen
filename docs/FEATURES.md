@@ -9,10 +9,13 @@ _Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
 
 ## Progress log
 - **2026-11-07 — target printers corrected to the real machines: Anycubic Photon Mono X (4K) and
-  Photon Mono X 6K.** Both are now built-in entries, listed first, with the 6K's pixel pitch fixed to
-  **34.0 µm** (it was carried at 34.45 µm, which derives a 198.43 × 124.02 mm build area against the
-  published 195.84 × 122.4 mm). `ResinPrinterTest` locks resolution × pitch against the published build
-  volume for both, and the app's default printer is now the Mono X 6K.
+  Photon Mono X 6K.** Both are now built-in entries, listed first, with the 6K's pixel pitch at **34.4 µm**
+  (corrected the same day from 34.0 µm: 34.0 comes from dividing the *published build volume* 195.84 × 122.4
+  by 5760, but that figure is the PRINTABLE AREA — a firmware margin inside the panel; the panel at 34.4
+  µm is 198.15 × 123.84 mm per Anycubic's own machine table in UVTools' `AnycubicFile.cs`, and the
+  marketed 9.25″ diagonal agrees at 34.59 µm. **Using 34.0 as the pitch scales every print by 1.2%
+  silently.**) `ResinPrinterTest` locks resolution × pitch against the **panel** for both — deliberately
+  NOT the published build volume — and the app's default printer is now the Mono X 6K.
 - 2026-11-07 — **FDM calibration towers (item 6) + the release pipeline.** `CalibrationModels.fdmTower`
   builds a stepped tower (segments unioned with real CSG, so no internal faces where the blocks meet)
   and `GcodeCalibration.apply` rewrites the sliced G-code so each Z segment runs its own temperature /
