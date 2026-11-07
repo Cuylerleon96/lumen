@@ -83,7 +83,7 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
     }
 
     PlateShell(
-        title = "OrcaMicro",
+        title = "Lumen",
         modelName = state.model?.name,
         onSlice = viewModel::sliceResin,
         message = state.message,

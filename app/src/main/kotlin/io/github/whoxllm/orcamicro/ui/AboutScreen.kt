@@ -76,7 +76,7 @@ fun AboutScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("About OrcaMicro") },
+                title = { Text("About Lumen") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
             )
         },
@@ -85,12 +85,13 @@ fun AboutScreen(onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("OrcaMicro ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.headlineSmall)
+            Text("Lumen ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.headlineSmall)
             Text("FDM engine: OrcaSlicer ${BuildConfig.ORCA_VERSION} · Resin engine: PrusaSlicer SLA. Both run entirely on this phone.")
             Text(
-                "OrcaMicro is free software: you can redistribute it and/or modify it under the terms of the " +
+                "Lumen is free software: you can redistribute it and/or modify it under the terms of the " +
                     "GNU Affero General Public License version 3 or later. It comes with no warranty. " +
-                    "Its complete source code is available from the project repository.",
+                    "Its complete source code is available from the project repository. " +
+                    "Lumen began as a fork of the OrcaMicro project and builds on OrcaSlicer and PrusaSlicer (both AGPL-3.0).",
             )
             OutlinedButton(
                 onClick = {

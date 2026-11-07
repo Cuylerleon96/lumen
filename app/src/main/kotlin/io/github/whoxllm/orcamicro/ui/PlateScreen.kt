@@ -69,7 +69,7 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
     var showPlacement by rememberSaveable { mutableStateOf(false) }
 
     PlateShell(
-        title = "OrcaMicro",
+        title = "Lumen",
         modelName = state.model?.name,
         onSlice = viewModel::slice,
         message = state.message,
