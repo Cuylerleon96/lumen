@@ -227,4 +227,28 @@ class ThreeMfTest {
     fun `an empty project is refused`() {
         assertFailsWith<IllegalArgumentException> { ThreeMf.writeToBytes(emptyList()) }
     }
+
+    /**
+     * Writes a real project to `build/three-mf/sample.3mf` so the output can be checked by something
+     * that is NOT this test suite — `scripts/three_mf_validate.py`, which unzips it with Python's
+     * zipfile and parses the XML with ElementTree. A round-trip through our own reader would share any
+     * misunderstanding we have of the format, which is exactly how a wrong file ships.
+     */
+    @Test
+    fun `writes a sample project for the independent python validator`() {
+        val dir = java.io.File("build/three-mf")
+        dir.mkdirs()
+        java.io.File(dir, "sample.3mf").writeBytes(
+            ThreeMf.writeToBytes(
+                listOf(
+                    ProjectObject(1, "left & low", meshOf(unitTriangle), mapOf("layer_height" to "0.2")),
+                    ProjectObject(
+                        2, "right", meshOf(unitTriangle, floatArrayOf(5f, 5f, 0f, 6f, 5f, 0f, 5f, 6f, 0f)),
+                        mapOf("layer_height" to "0.1", "sparse_infill_density" to "15%"),
+                    ),
+                ),
+            ),
+        )
+        assertTrue(java.io.File(dir, "sample.3mf").length() > 0)
+    }
 }
