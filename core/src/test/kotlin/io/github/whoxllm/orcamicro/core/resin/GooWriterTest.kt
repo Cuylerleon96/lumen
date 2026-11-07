@@ -61,7 +61,7 @@ class GooWriterTest {
     fun `writes a valid header and footer`() {
         val layers = listOf(ByteArray(4) { 127 }, ByteArray(4))
         val out = ByteArrayOutputStream()
-        GooWriter.write(layers, 2, 2, 0.05, 2.5, 25.0, 5, 7.0, 0.1, 68.0, 120.0, out)
+        GooWriter.write(layers.size, { i -> layers[i] }, 2, 2, 0.05, 2.5, 25.0, 5, 7.0, 0.1, 68.0, 120.0, out)
         val b = out.toByteArray()
         // header starts with "V3.0"
         assertEquals("V3.0", String(b, 0, 4, Charsets.US_ASCII))

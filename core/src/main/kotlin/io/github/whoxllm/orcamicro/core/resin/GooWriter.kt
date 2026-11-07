@@ -19,7 +19,8 @@ object GooWriter {
     private val DELIMITER = byteArrayOf(0x0D, 0x0A)
 
     fun write(
-        layers: List<ByteArray>,          // per-layer masks, width*height, values 0..127
+        layerCount: Int,                  // number of layers
+        maskAt: (Int) -> ByteArray,       // per-layer mask, width*height, values 0..127 (lazy — decoded one at a time)
         width: Int,
         height: Int,
         layerHeightMm: Double,
@@ -32,11 +33,6 @@ object GooWriter {
         plateDepthMm: Double,
         out: OutputStream,
     ) {
-        val layerCount = layers.size
-
-        // --- encode each layer's RLE (also gives us each LayerDef's DataLength) ---
-        val rle = layers.map { encodeRle(it) }
-
         // --- Header ---
         val header = ByteArrayOutputStream()
         header.writeAsciiFixed("V3.0", 4)
@@ -95,8 +91,9 @@ object GooWriter {
 
         out.write(headerBytes)
 
-        // --- Layer table: [LayerDef + RLE + delimiter] × N ---
+        // --- Layer table: [LayerDef + RLE + delimiter] × N (one mask at a time) ---
         for (i in 0 until layerCount) {
+            val rle = encodeRle(maskAt(i))
             val def = ByteArrayOutputStream()
             def.writeU16(0)                        // Pause
             def.writeF32(machineZmm)               // PausePositionZ
@@ -110,9 +107,9 @@ object GooWriter {
             def.writeF32(0f); def.writeF32(60f)    // RetractHeight2/Speed2
             def.writeU16(255)                      // LightPWM
             def.write(DELIMITER)                   // DelimiterData
-            def.writeU32(rle[i].size)              // DataLength
+            def.writeU32(rle.size)                 // DataLength
             out.write(def.toByteArray())
-            out.write(rle[i])
+            out.write(rle)
             out.write(DELIMITER)
         }
 

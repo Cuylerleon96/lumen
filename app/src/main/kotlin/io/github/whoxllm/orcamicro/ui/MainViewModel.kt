@@ -27,6 +27,7 @@ import io.github.whoxllm.orcamicro.core.resin.ResinProfile
 import io.github.whoxllm.orcamicro.core.resin.ResinSettings
 import io.github.whoxllm.orcamicro.core.resin.ResinSliceRequest
 import io.github.whoxllm.orcamicro.core.resin.Sl1ToCtb
+import io.github.whoxllm.orcamicro.core.resin.Sl1ToGoo
 import io.github.whoxllm.orcamicro.core.resin.Sl1Writer
 import io.github.whoxllm.orcamicro.core.slicing.SliceOutcome
 import io.github.whoxllm.orcamicro.core.settings.BedShape
@@ -567,12 +568,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         sl1
                     } else {
                         val heightMm = model.size.z.toDouble()
+                        val printTime = settings.estimatedPrintTimeSec(heightMm).toInt()
                         val dst = File(app.cacheDir, "$base.${printer.format.ext}")
                         dst.outputStream().use { o ->
-                            Sl1ToCtb.convert(
-                                sl1.readBytes(), settings, printer, heightMm,
-                                settings.estimatedPrintTimeSec(heightMm).toInt(), o,
-                            )
+                            when (printer.format) {
+                                ResinFormat.GOO -> Sl1ToGoo.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
+                                else -> Sl1ToCtb.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
+                            }
                         }
                         sl1.delete()
                         dst
