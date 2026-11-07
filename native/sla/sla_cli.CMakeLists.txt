@@ -1,0 +1,3 @@
+# Harness target dropped into the PrusaSlicer build tree so it links libslic3r's deps automatically.
+add_executable(sla_cli sla_cli.cpp)
+target_link_libraries(sla_cli PRIVATE libslic3r)
