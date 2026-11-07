@@ -521,6 +521,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Override the resin export format (null = Auto / printer's native format). */
+    fun setFormatOverride(format: ResinFormat?) {
+        _state.update { it.copy(formatOverride = format) }
+        persist()
+    }
+
     fun setResinSettings(settings: ResinSettings) {
         _state.update { it.copy(resinSettings = settings) }
         persist()
@@ -564,14 +570,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                     // Re-container into the printer's native format (CTB for Chitubox-family, else SL1).
-                    if (printer.format == ResinFormat.SL1) {
+                    val fmt = _state.value.formatOverride ?: printer.format
+                    if (fmt == ResinFormat.SL1) {
                         sl1
                     } else {
                         val heightMm = model.size.z.toDouble()
                         val printTime = settings.estimatedPrintTimeSec(heightMm).toInt()
-                        val dst = File(app.cacheDir, "$base.${printer.format.ext}")
+                        val dst = File(app.cacheDir, "$base.${fmt.ext}")
                         dst.outputStream().use { o ->
-                            when (printer.format) {
+                            when (fmt) {
                                 ResinFormat.GOO -> Sl1ToGoo.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
                                 else -> Sl1ToCtb.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
                             }

@@ -31,6 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -204,6 +205,16 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
             IntField("Bottom layers", s.bottomLayers) { viewModel.setResinSettings(s.copy(bottomLayers = it)) }
             IntField("Transition layers", s.transitionLayers) { viewModel.setResinSettings(s.copy(transitionLayers = it)) }
             NumField("Light-off delay (s)", s.lightOffSec) { viewModel.setResinSettings(s.copy(lightOffSec = it)) }
+            Text("Output format", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf<ResinFormat?>(null, ResinFormat.SL1, ResinFormat.CTB, ResinFormat.GOO).forEach { f ->
+                    FilterChip(
+                        selected = state.formatOverride == f,
+                        onClick = { viewModel.setFormatOverride(f) },
+                        label = { Text(f?.ext?.uppercase() ?: "Auto") },
+                    )
+                }
+            }
             IntField("Anti-aliasing levels", s.antiAliasLevels) { viewModel.setResinSettings(s.copy(antiAliasLevels = it)) }
             NumField("Resin density (g/ml)", s.materialDensityGPerMl) { viewModel.setResinSettings(s.copy(materialDensityGPerMl = it)) }
             NumField("Resin price / kg", s.pricePerKg) { viewModel.setResinSettings(s.copy(pricePerKg = it)) }

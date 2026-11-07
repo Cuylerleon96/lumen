@@ -6,6 +6,7 @@ import io.github.whoxllm.orcamicro.core.mesh.Mesh
 import io.github.whoxllm.orcamicro.core.mesh.Placement
 import io.github.whoxllm.orcamicro.core.mesh.Vec3
 import io.github.whoxllm.orcamicro.core.profiles.Catalog
+import io.github.whoxllm.orcamicro.core.resin.ResinFormat
 import io.github.whoxllm.orcamicro.core.resin.ResinPrinter
 import io.github.whoxllm.orcamicro.core.resin.ResinSettings
 import io.github.whoxllm.orcamicro.core.settings.BedShape
@@ -56,6 +57,8 @@ data class UiState(
     /** Null until the user picks FDM or resin on first launch. */
     val technology: Technology? = null,
     val resinPrinter: ResinPrinter? = null,
+    /** Override the printer's native export format; null = Auto (use the printer's format). */
+    val formatOverride: ResinFormat? = null,
     val resinSettings: ResinSettings = ResinSettings(),
     val resinSlice: SliceState = SliceState.Idle,
     /** The last resin slice written to disk, ready to save/share. */
