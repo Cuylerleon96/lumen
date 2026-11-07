@@ -41,7 +41,11 @@ object Sl1ToCtb {
                     val img = PngDecoder.decode(baos.toByteArray())
                     if (width == 0) { width = img.width; height = img.height }
                     // engine grayscale 0..255 → CTB 0..127
-                    val mask = ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }
+                    var mask = ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }
+                    if (settings.repairLayers) {
+                        mask = LayerRepair.removeSpecks(mask, img.width, img.height, settings.minSpeckPixels)
+                        mask = LayerRepair.fillHoles(mask, img.width, img.height)
+                    }
                     val aa = AntiAliaser.apply(mask, img.width, img.height, settings.antiAliasLevels)
                     named += e.name to CtbWriter.encodeRle7(aa)   // small blob; mask is freed next iteration
                 }

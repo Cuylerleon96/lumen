@@ -43,7 +43,12 @@ object Sl1ToGoo {
             layerCount = sorted.size,
             maskAt = { i ->
                 val img = PngDecoder.decode(sorted[i].second)
-                ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }   // 0..255 → 0..127
+                var m = ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }   // 0..255 → 0..127
+                if (settings.repairLayers) {
+                    m = LayerRepair.removeSpecks(m, img.width, img.height, settings.minSpeckPixels)
+                    m = LayerRepair.fillHoles(m, img.width, img.height)
+                }
+                m
             },
             width = width,
             height = height,

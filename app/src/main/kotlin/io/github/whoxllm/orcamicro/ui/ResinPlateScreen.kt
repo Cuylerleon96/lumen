@@ -227,6 +227,7 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
             }
             HorizontalDivider()
             SwitchRow("Generate supports", s.supportsEnabled) { viewModel.setResinSettings(s.copy(supportsEnabled = it)) }
+            SwitchRow("Repair layers (remove specks, fill pinholes)", s.repairLayers) { viewModel.setResinSettings(s.copy(repairLayers = it)) }
             if (s.supportsEnabled) {
                 IntField("Support density (%)", s.supportDensityPercent) { viewModel.setResinSettings(s.copy(supportDensityPercent = it)) }
                 NumField("Contact diameter (mm)", s.supportContactDiameterMm) { viewModel.setResinSettings(s.copy(supportContactDiameterMm = it)) }

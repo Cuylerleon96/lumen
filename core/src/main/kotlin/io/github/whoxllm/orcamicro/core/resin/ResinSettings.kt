@@ -39,6 +39,12 @@ data class ResinSettings(
     /** Voxel closing distance in mm (fills thin features so the shell stays connected). */
     val hollowingClosingDistanceMm: Double = 0.5,
 
+    // ---- Layer repair (K) ----
+    /** Remove floating specks + fill pinholes in each layer before export. */
+    val repairLayers: Boolean = false,
+    /** A connected component smaller than this many pixels is treated as a speck. */
+    val minSpeckPixels: Int = 4,
+
     // ---- Supports (D.3) ----
     /** Generate supports (auto + editable). */
     val supportsEnabled: Boolean = true,
