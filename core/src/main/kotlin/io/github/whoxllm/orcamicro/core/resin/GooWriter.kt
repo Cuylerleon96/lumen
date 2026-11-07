@@ -169,7 +169,7 @@ object GooWriter {
     private fun ByteArrayOutputStream.writeAsciiFixed(s: String, len: Int) {
         val b = ByteArray(len)
         val src = s.toByteArray(Charsets.US_ASCII)
-        System.arraycopy(src, 0, b, 0, minOf(src.size, len - 1))
+        System.arraycopy(src, 0, b, 0, minOf(src.size, len))
         write(b)
     }
     private fun ByteArrayOutputStream.writeU16(v: Int) { write((v ushr 8) and 0xFF); write(v and 0xFF) }
