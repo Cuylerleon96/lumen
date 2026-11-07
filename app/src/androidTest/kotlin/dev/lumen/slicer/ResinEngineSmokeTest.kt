@@ -78,7 +78,13 @@ class ResinEngineSmokeTest {
         val centred = slice(box(40f, 30f, 20f), centred = true)
         val atOrigin = slice(box(40f, 30f, 20f), centred = false)
 
-        println("ResinEngineSmokeTest margins: centred=${margins(midLayer(centred))} origin=${margins(midLayer(atOrigin))}")
+        // println does not reach logcat from an instrumentation test; Log.i does. Read it with
+        // `adb logcat -d -s ResinTest:I`.
+        android.util.Log.i(
+            "ResinTest",
+            "margins centred=${margins(midLayer(centred))} origin=${margins(midLayer(atOrigin))} " +
+                "sizes=${centred.length()}/${atOrigin.length()}",
+        )
         assertFalse(
             "the app's own slice must not touch a plate edge",
             touchesEdge(midLayer(centred)),
