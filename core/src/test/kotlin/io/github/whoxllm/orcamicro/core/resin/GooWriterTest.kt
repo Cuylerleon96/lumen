@@ -68,6 +68,6 @@ class GooWriterTest {
         // footer: last 8 bytes are the magic
         assertTrue(b.copyOfRange(b.size - 8, b.size).contentEquals(byteArrayOf(0x07, 0, 0, 0, 0x44, 0x4C, 0x50, 0)))
         // LayerDefAddress (u32 BE at size-8 of header) == 0x...  we can find it via the encoded layers count
-        assertTrue(b.size > 200 * 1024)   // header carries two big previews
+        assertTrue(b.size > 180 * 1024)   // header carries two big previews (116² + 290² RGB565 ≈ 195 KB)
     }
 }
