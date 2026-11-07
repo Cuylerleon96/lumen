@@ -1,6 +1,7 @@
 package io.github.whoxllm.orcamicro.ui
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -16,17 +17,28 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.whoxllm.orcamicro.BuildConfig
+import io.github.whoxllm.orcamicro.update.Updater
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val thirdParty = listOf(
     "OrcaSlicer (libslic3r), AGPL-3.0, by SoftFever and contributors, based on Bambu Studio, PrusaSlicer and Slic3r",
+    "PrusaSlicer (SLA engine), AGPL-3.0, by Prusa Research",
     "Boost, Boost Software License 1.0",
     "oneTBB, Apache-2.0",
     "CGAL, GPL-3.0 / LGPL-3.0",
@@ -35,6 +47,8 @@ private val thirdParty = listOf(
     "OpenCV, Apache-2.0",
     "GMP and MPFR, LGPL-3.0",
     "NLopt, MIT / LGPL-2.1",
+    "Z3, MIT",
+    "OpenVDB, MPL-2.0",
     "Draco, Apache-2.0",
     "libnoise, LGPL-2.1",
     "cereal, BSD-3-Clause",
@@ -44,13 +58,19 @@ private val thirdParty = listOf(
     "FreeType, FreeType License",
     "Clipper and Clipper2, Boost Software License 1.0",
     "Qhull, Qhull License",
-    "admesh, libigl, mcut, miniz, nlohmann/json and the other libraries bundled with OrcaSlicer",
+    "admesh, libigl, mcut, miniz, nlohmann/json and the other libraries bundled with OrcaSlicer and PrusaSlicer",
     "Kotlin, kotlinx.coroutines, kotlinx.serialization, AndroidX and Jetpack Compose, Apache-2.0",
 )
 
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("updates", Context.MODE_PRIVATE) }
+    var baseUrl by remember { mutableStateOf(prefs.getString("baseUrl", "") ?: "") }
+    var status by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -64,7 +84,7 @@ fun AboutScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("OrcaMicro ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.headlineSmall)
-            Text("Slicing engine: OrcaSlicer ${BuildConfig.ORCA_VERSION}, running entirely on this phone.")
+            Text("FDM engine: OrcaSlicer ${BuildConfig.ORCA_VERSION} · Resin engine: PrusaSlicer SLA. Both run entirely on this phone.")
             Text(
                 "OrcaMicro is free software: you can redistribute it and/or modify it under the terms of the " +
                     "GNU Affero General Public License version 3 or later. It comes with no warranty. " +
@@ -80,6 +100,53 @@ fun AboutScreen(onBack: () -> Unit) {
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Source code") }
+
+            Text("Updates", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Test builds are served from your own machine. Enter its address, then check for updates.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = { baseUrl = it; prefs.edit().putString("baseUrl", it.trim()).apply() },
+                label = { Text("Update server URL") },
+                placeholder = { Text("http://192.168.1.x:8799") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedButton(
+                onClick = {
+                    val base = baseUrl.trim()
+                    if (base.isBlank()) { status = "Enter the update server URL first."; return@OutlinedButton }
+                    busy = true; status = "Checking…"
+                    scope.launch {
+                        try {
+                            val info = withContext(Dispatchers.IO) { Updater.check(base, BuildConfig.VERSION_CODE) }
+                            if (info.versionCode <= BuildConfig.VERSION_CODE) {
+                                status = "Up to date (${BuildConfig.VERSION_NAME})."
+                            } else {
+                                status = "Downloading v${info.version}…"
+                                val apk = withContext(Dispatchers.IO) {
+                                    Updater.download(context, info) { p -> status = "Downloading… $p%" }
+                                }
+                                if (!Updater.verifySha256(apk, info.sha256)) {
+                                    status = "Checksum mismatch — aborting."
+                                } else {
+                                    status = "Installing v${info.version}…"
+                                    Updater.install(context, apk)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            status = "Update failed: ${e.message}"
+                        }
+                        busy = false
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (busy) "Working…" else "Check for updates") }
+            if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodyMedium)
+
             Text("Built with", style = MaterialTheme.typography.titleMedium)
             for (line in thirdParty) Text("• $line", style = MaterialTheme.typography.bodySmall)
             Text(

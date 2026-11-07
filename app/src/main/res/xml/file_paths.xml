@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="slices" path="slices/" />
+    <!-- downloaded update APKs live in getExternalFilesDir(null)/update/ -->
+    <external-files-path name="updates" path="update/" />
 </paths>

@@ -28,7 +28,8 @@ android {
         applicationId = "io.github.whoxllm.orcamicro"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
+        // Overridable so the update server can bump it per publish (server/publish.sh).
+        versionCode = providers.environmentVariable("ORCAMICRO_VERSION_CODE").orNull?.toIntOrNull() ?: 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
