@@ -12,7 +12,7 @@ enum class PrinterKind { MOONRAKER, OCTOPRINT, PRUSALINK }
 data class NetworkPrinter(
     val name: String,
     val kind: PrinterKind,
-    /** Base URL including scheme + port, e.g. "http://192.168.1.50" or "http://printer.local:7125". */
+    /** Base URL including scheme + port, e.g. "http://192.168.0.50" or "http://printer.local:7125". */
     val baseUrl: String,
     /** API key, if the printer requires one (OctoPrint, Moonraker). */
     val apiKey: String? = null,

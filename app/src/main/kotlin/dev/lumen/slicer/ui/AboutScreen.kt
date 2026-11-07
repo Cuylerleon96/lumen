@@ -116,7 +116,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 value = baseUrl,
                 onValueChange = { baseUrl = it; prefs.edit().putString("baseUrl", it.trim()).apply() },
                 label = { Text("Update server URL") },
-                placeholder = { Text("http://192.168.1.x:8799") },
+                placeholder = { Text("http://192.168.0.x:8799") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

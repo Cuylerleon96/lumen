@@ -226,7 +226,7 @@ private fun SendToPrinterDialog(
                     value = url,
                     onValueChange = { url = it; prefs.edit().putString("url", it.trim()).apply() },
                     label = { Text("Printer URL") },
-                    placeholder = { Text("http://192.168.1.50") },
+                    placeholder = { Text("http://192.168.0.50") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
