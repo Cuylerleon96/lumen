@@ -15,10 +15,10 @@ object SlaEngine {
         return try {
             System.loadLibrary("sla_engine")
             loaded = true
-            android.util.Log.i("SlaEngine", "libsla_engine.so loaded OK")
+            println("SlaEngine: libsla_engine.so loaded OK")
             true
         } catch (t: Throwable) {
-            android.util.Log.e("SlaEngine", "loadLibrary(sla_engine) failed", t)
+            println("SlaEngine: loadLibrary(sla_engine) failed: $t")
             false
         }
     }
