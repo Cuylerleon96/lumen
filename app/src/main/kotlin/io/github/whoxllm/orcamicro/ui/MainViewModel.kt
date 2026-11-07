@@ -453,7 +453,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val out = withContext(Dispatchers.Default) {
                     val base = model.name.substringBeforeLast('.').ifBlank { "print" }
                     val sl1 = File(app.cacheDir, "$base.sl1")
-                    val request = ResinSliceRequest(model.placed, printer, settings, base, app.cacheDir)
+                    // The SLA engine's bed is centred on the origin, so place the model there (the
+                    // FDM-bed placement would push it off-plate → empty layers).
+                    val resinPlacement = model.placement.copy(centerX = 0f, centerY = 0f)
+                    val placedMesh = resinPlacement.place(model.mesh)
+                    val request = ResinSliceRequest(placedMesh, printer, settings, base, app.cacheDir)
                     sl1.outputStream().use { stream ->
                         val outcome = ResinBackend.slice(stream, request) { percent, text ->
                             _state.update { it.copy(resinSlice = SliceState.Running(percent, text)) }
