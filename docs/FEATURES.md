@@ -46,8 +46,10 @@ _Last updated: 2026-11-06 (initial full inventory)._
 
 ## D. Resin (MSLA) — the big build
 ### D.1 Engine
-- 🚧/🔜 **PrusaSlicer SLA engine** (`SLAPrint` + `sla::SupportTree` + OpenVDB) as a **second `.so`**
-  — ADR 0003 option **B**. (Currently a naive `MeshRasterizer` stands in.)
+- 🚧 **PrusaSlicer SLA engine** (`SLAPrint` + `sla::SupportTree` + OpenVDB) as a **second `.so`**
+  — ADR 0003 option **B**. PrusaSlicer 2.8.1 cloned; dedicated dep build (`native/sla/build-sla-deps.sh`
+  → `prefix-sla`) running on the build host. Feasibility proven (toolchain OK; needs its own Eigen/Boost/etc.).
+  (Currently a naive `MeshRasterizer` stands in.)
 - ✅ **SL1 writer** (config.ini + per-layer grayscale PNG), streaming.
 - ✅ Platform-free grayscale **PNG encoder**.
 ### D.2 Print settings
