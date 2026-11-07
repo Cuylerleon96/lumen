@@ -38,6 +38,7 @@ object Sl1ToGoo {
         val first = PngDecoder.decode(sorted[0].second)
         val width = first.width
         val height = first.height
+        val firstMask = ByteArray(first.gray.size) { ((first.gray[it].toInt() and 0xFF) shr 1).toByte() }
 
         GooWriter.write(
             layerCount = sorted.size,
@@ -61,6 +62,8 @@ object Sl1ToGoo {
             plateWidthMm = printer.buildWidthMm,
             plateDepthMm = printer.buildDepthMm,
             out = out,
+            smallPreview565 = PreviewRenderer.rgb565(firstMask, width, height, 116, 116, bigEndian = true),
+            bigPreview565 = PreviewRenderer.rgb565(firstMask, width, height, 290, 290, bigEndian = true),
         )
     }
 }

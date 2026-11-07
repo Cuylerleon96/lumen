@@ -32,6 +32,9 @@ object GooWriter {
         plateWidthMm: Double,
         plateDepthMm: Double,
         out: OutputStream,
+        /** Optional RGB565 BE previews (116² small, 290² big); blank (black) when null. */
+        smallPreview565: ByteArray? = null,
+        bigPreview565: ByteArray? = null,
     ) {
         // --- Header ---
         val header = ByteArrayOutputStream()
@@ -46,9 +49,9 @@ object GooWriter {
         header.writeU16(1)                         // AntiAliasingLevel
         header.writeU16(1)                         // GreyLevel
         header.writeU16(0)                         // BlurLevel
-        header.write(ByteArray(116 * 116 * 2))     // SmallPreview565 (blank)
+        header.write(smallPreview565?.takeIf { it.size == 116 * 116 * 2 } ?: ByteArray(116 * 116 * 2))  // SmallPreview565
         header.write(DELIMITER)
-        header.write(ByteArray(290 * 290 * 2))     // BigPreview565 (blank)
+        header.write(bigPreview565?.takeIf { it.size == 290 * 290 * 2 } ?: ByteArray(290 * 290 * 2))    // BigPreview565
         header.write(DELIMITER)
         header.writeU32(layerCount)                // LayerCount
         header.writeU16(width)                     // ResolutionX
