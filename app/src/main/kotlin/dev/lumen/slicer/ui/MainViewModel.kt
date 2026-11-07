@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import dev.lumen.slicer.core.Technology
 import dev.lumen.slicer.core.gcode.GcodeParser
 import dev.lumen.slicer.core.mesh.Mesh
+import dev.lumen.slicer.core.mesh.PlateArranger
 import dev.lumen.slicer.core.mesh.CalibrationModels
 import dev.lumen.slicer.core.mesh.ObjReader
 import dev.lumen.slicer.core.mesh.Placement
@@ -99,6 +100,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     resinPrinter = ResinPrinter.byName(saved.resinPrinterName)
                         ?: ResinPrinter.byName("Anycubic Photon Mono X 6K") ?: ResinPrinter.builtIn.first(),
                     resinSettings = saved.resinSettings ?: ResinSettings(),
+                    arrange = saved.arrange ?: PlateArranger.Settings(),
                     screen = startScreen(technology),
                 )
             }
@@ -393,10 +395,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * The plate the user is actually working on, in the frame [Placement] speaks: the machine bed for
+     * FDM, the **panel** for resin.
+     *
+     * This distinction matters more than it looks. `state.bed` comes from the FDM machine profile, so
+     * using it on the resin side centres, fits and arranges every model against the wrong rectangle —
+     * and because the SLA raster is corner-origin, a wrong frame does not just look odd, it clips the
+     * print. One helper, used by centre / fit / arrange, keeps the three consistent.
+     */
+    private class Plate(val width: Float, val depth: Float, val originX: Float, val originY: Float) {
+        val centreX: Float get() = originX + width / 2f
+        val centreY: Float get() = originY + depth / 2f
+    }
+
+    private fun plateOf(state: UiState): Plate? = if (state.technology == Technology.RESIN) {
+        state.resinPrinter?.let { Plate(it.buildWidthMm.toFloat(), it.buildDepthMm.toFloat(), 0f, 0f) }
+    } else {
+        state.bed?.let { Plate(it.width, it.depth, it.minX, it.minY) }
+    }
+
+    private fun plateHeight(state: UiState): Float =
+        if (state.technology == Technology.RESIN) {
+            state.resinPrinter?.buildHeightMm?.toFloat() ?: state.printableHeight
+        } else {
+            state.printableHeight
+        }
+
     fun centerModel() {
-        val model = _state.value.model ?: return
-        val bed = _state.value.bed ?: return
-        setPlacement(model.placement.copy(centerX = bed.centerX, centerY = bed.centerY))
+        val state = _state.value
+        val model = state.model ?: return
+        val plate = plateOf(state) ?: return
+        setPlacement(model.placement.copy(centerX = plate.centreX, centerY = plate.centreY))
     }
 
     /**
@@ -419,14 +449,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun fitToBuildVolume() {
         val state = _state.value
         val model = state.model ?: return
-        val bed = state.bed ?: return
+        val plate = plateOf(state) ?: return
+        val height = plateHeight(state)
         val size = model.placed.bounds().size
         if (size.x <= 0f || size.y <= 0f || size.z <= 0f) return
-        val factor = minOf(bed.width / size.x, bed.depth / size.y, state.printableHeight / size.z).coerceAtMost(1f)
+        val factor = minOf(plate.width / size.x, plate.depth / size.y, height / size.z).coerceAtMost(1f)
         if (factor >= 0.999f) return showMessage("Already fits the build volume")
         val newScale = (model.placement.scalePercent * factor).coerceIn(10f, 400f)
         setPlacement(model.placement.copy(scalePercent = newScale))
         showMessage("Scaled to ${newScale.roundToInt()}% to fit")
+    }
+
+    /** Auto-arrange knobs: spacing between models, margin from the plate edge, 90° rotations. */
+    fun setArrange(settings: PlateArranger.Settings) {
+        _state.update { it.copy(arrange = settings) }
+        persist()
+    }
+
+    /**
+     * Pack the plate with [PlateArranger] and apply the result.
+     *
+     * The frame has to be the plate's own: for FDM that is the machine bed from the profile, for resin
+     * it is the **panel** — the engine's raster is corner-origin, so arranging a resin plate against
+     * the FDM bed would pack every model against the wrong frame and clip them all at once. The packed
+     * group is then centred, because the arranger packs from the corner and a plate hugging one corner
+     * reads as a bug rather than a feature.
+     */
+    fun arrangePlate() {
+        val state = _state.value
+        val model = state.model ?: return showMessage("Open a model first")
+        val plate = plateOf(state) ?: return showMessage(
+            if (state.technology == Technology.RESIN) "Pick a resin printer first" else "No plate to arrange on",
+        )
+        val settings = state.arrange
+        val size = model.placed.bounds().size
+        val items = listOf(PlateArranger.Item(id = 0, widthMm = size.x.toDouble(), depthMm = size.y.toDouble()))
+        val packed = PlateArranger.arrange(items, plate.width.toDouble(), plate.depth.toDouble(), settings)
+        val centred = PlateArranger.centre(packed, items, plate.width.toDouble(), plate.depth.toDouble())
+        val spot = centred.spots.firstOrNull()
+        if (spot == null) {
+            showMessage("This model does not fit the plate with a ${settings.marginMm.roundToInt()} mm margin")
+            return
+        }
+        val placement = model.placement
+        setPlacement(
+            placement.copy(
+                centerX = plate.originX + spot.centerX,
+                centerY = plate.originY + spot.centerY,
+                rotationZ = if (spot.rotated) PlateGesture.normalizeDegrees(placement.rotationZ + 90f) else placement.rotationZ,
+            ),
+        )
+        val turned = if (spot.rotated) ", turned 90°" else ""
+        val leftOver = if (centred.unplaced.isEmpty()) "" else " · ${centred.unplaced.size} did not fit"
+        showMessage("Arranged ${centred.spots.size} of ${centred.spots.size + centred.unplaced.size} model$turned$leftOver")
     }
 
     fun removeModel() {
@@ -606,12 +681,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val out = withContext(Dispatchers.Default) {
                     val base = model.name.substringBeforeLast('.').ifBlank { "print" }
                     val sl1 = File(app.cacheDir, "$base.sl1")
-                    // The engine's raster is CORNER-origin: it covers world (0,0) -> (panelW, panelH).
-                    // Measured, not assumed -- a marker at world +40 mm came out with everything
-                    // negative clipped. So the model must sit at half the panel or it hangs off the
-                    // corner and loses material silently.
-                    val (bedCx, bedCy) = ResinPlacement.bedCentre(printer)
-                    val resinPlacement = model.placement.copy(centerX = bedCx, centerY = bedCy)
+                    // The engine's raster is CORNER-origin: it covers world (0,0) -> (panelW, panelD),
+                    // measured by slicing a marker at world +X/+Y. A fresh model is centred on the panel
+                    // (ResinPlateScreen puts it there), and a model the user dragged keeps the position
+                    // they chose — but the FOOTPRINT is clamped onto the print area, because a model
+                    // hanging over the corner loses material silently instead of failing.
+                    val panelW = printer.buildWidthMm.toFloat()
+                    val panelD = printer.buildDepthMm.toFloat()
+                    val foot = model.placed.bounds()
+                    val shiftX = when {
+                        foot.min.x < 0f -> -foot.min.x
+                        foot.max.x > panelW -> panelW - foot.max.x
+                        else -> 0f
+                    }
+                    val shiftY = when {
+                        foot.min.y < 0f -> -foot.min.y
+                        foot.max.y > panelD -> panelD - foot.max.y
+                        else -> 0f
+                    }
+                    if (shiftX != 0f || shiftY != 0f) {
+                        showMessage(
+                            "Moved onto the print area — this printer's plate is " +
+                                "%.0f × %.0f mm".format(panelW, panelD),
+                        )
+                    }
+                    val resinPlacement = model.placement.copy(
+                        centerX = model.placement.centerX + shiftX,
+                        centerY = model.placement.centerY + shiftY,
+                    )
                     val placedMesh = resinPlacement.place(model.mesh)
                     val request = ResinSliceRequest(placedMesh, printer, settings, base, app.cacheDir)
                     sl1.outputStream().use { stream ->
@@ -693,6 +790,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             technology = state.technology,
             resinPrinterName = state.resinPrinter?.name,
             resinSettings = state.resinSettings,
+            arrange = state.arrange,
         )
         viewModelScope.launch(Dispatchers.IO) { runCatching { store.save(saved) } }
     }

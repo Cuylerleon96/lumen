@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.lumen.slicer.core.mesh.Placement
+import dev.lumen.slicer.core.mesh.PlateArranger
 import dev.lumen.slicer.core.settings.BedShape
 import dev.lumen.slicer.render.PlateRenderer
 import dev.lumen.slicer.render.SceneView
@@ -67,6 +68,18 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
         uri?.let { viewModel.importProject(it) }
     }
     var showPlacement by rememberSaveable { mutableStateOf(false) }
+    val renderer = remember { PlateRenderer() }
+    val gesture = remember { PlateGesture(renderer, viewModel::setPlacement) }
+    // Read in the composable body: an AndroidView update lambda does not subscribe to snapshot state
+    // by itself, so a selection change would not otherwise reach the renderer.
+    val selected = gesture.selected
+    // A newly opened model starts unselected.
+    LaunchedEffect(state.model?.name) {
+        if (gesture.modelName != state.model?.name) {
+            gesture.selected = false
+            gesture.modelName = state.model?.name
+        }
+    }
 
     PlateShell(
         title = "Lumen",
@@ -88,6 +101,7 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
             IconButton(onClick = { showPlacement = true }, enabled = state.model != null) {
                 Icon(Icons.Default.Edit, "Move, rotate and scale")
             }
+            TextButton(onClick = { viewModel.arrangePlate() }, enabled = state.model != null) { Text("Arrange") }
             IconButton(onClick = { viewModel.navigate(Screen.PRESETS) }) { Icon(Icons.Default.Build, "Printer and presets") }
             IconButton(onClick = { viewModel.navigate(Screen.SETTINGS) }) { Icon(Icons.Default.Settings, "Print settings") }
             if (state.lastResult != null) {
@@ -95,17 +109,21 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
             }
         },
     ) {
-        val renderer = remember { PlateRenderer() }
         // Plain holder, not state: framing happens in the view update and must not recompose.
         val framedBed = remember { arrayOfNulls<BedShape>(1) }
-        SceneView(renderer, Modifier.fillMaxSize()) { r ->
+        SceneView(renderer, Modifier.fillMaxSize(), gesture) { r ->
             val bed = state.bed
             if (bed != null && framedBed[0] != bed) {
                 r.camera.frame(bed.centerX, bed.centerY, 0f, max(bed.width, bed.depth) * 0.6f)
                 framedBed[0] = bed
             }
             r.setBed(bed, state.printableHeight)
-            r.setModel(state.model?.placed, state.model?.fits ?: true)
+            // Keep the gesture's picture of the model current: this is the box the picking ray tests
+            // and the placement a committed drag is applied to.
+            val m = state.model
+            gesture.bounds = m?.placed?.worldAabb()
+            gesture.placement = m?.placement ?: Placement()
+            r.setModel(m?.placed, m?.fits ?: true, selected)
         }
         PresetSummary(state, onClick = { viewModel.navigate(Screen.PRESETS) }, modifier = Modifier.align(Alignment.TopCenter))
         val model = state.model
@@ -129,7 +147,7 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
                 }
             }
         } else {
-            ModelInfo(model, Modifier.align(Alignment.BottomStart).padding(12.dp))
+            ModelBar(model.size, model.fits, gesture, Modifier.align(Alignment.BottomStart).padding(12.dp))
         }
     }
 
@@ -143,6 +161,8 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
             onFit = viewModel::fitToBuildVolume,
             onLayFlat = viewModel::layFlat,
             onDismiss = { showPlacement = false },
+            onArrange = viewModel::arrangePlate,
+            onArrangeSettings = viewModel::setArrange,
         )
     }
     UnitPromptDialog(state, viewModel)
@@ -168,21 +188,6 @@ private fun PresetSummary(state: UiState, onClick: () -> Unit, modifier: Modifie
 }
 
 @Composable
-private fun ModelInfo(model: ModelState, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Text(
-                "%.1f × %.1f × %.1f mm".format(model.size.x, model.size.y, model.size.z),
-                style = MaterialTheme.typography.labelLarge,
-            )
-            if (!model.fits) {
-                Text("Outside the build volume", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-@Composable
 fun PlacementSheet(
     model: ModelState,
     state: UiState,
@@ -191,13 +196,18 @@ fun PlacementSheet(
     onFit: () -> Unit,
     onLayFlat: () -> Unit,
     onDismiss: () -> Unit,
-    /** Resin's bed is corner-origin in the engine's frame, so the engine path centres the model on
-     *  the bed itself and only rotate/scale apply here. */
-    showPosition: Boolean = true,
+    onArrange: () -> Unit,
+    onArrangeSettings: (PlateArranger.Settings) -> Unit,
+    /**
+     * The plate this model sits on. Pass it when the state's own bed is not the plate being shown: the
+     * resin side's `state.bed` comes from the FDM machine profile, so the position limits, the reset
+     * target and the centre button would all point at the wrong rectangle.
+     */
+    plateBed: BedShape? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val p = model.placement
-    val bed = state.bed
+    val bed = plateBed ?: state.bed
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding(),
@@ -241,7 +251,7 @@ fun PlacementSheet(
                     OutlinedButton(onClick = { onChange(p.copy(scalePercent = preset)) }) { Text("${preset.roundToInt()}%") }
                 }
             }
-            if (showPosition && bed != null) {
+            if (bed != null) {
                 HorizontalDivider()
                 LabeledSlider("Position X", "%.1f mm".format(p.centerX), p.centerX, bed.minX..bed.maxX) {
                     onChange(p.copy(centerX = it))
@@ -250,8 +260,30 @@ fun PlacementSheet(
                     onChange(p.copy(centerY = it))
                 }
             }
+            HorizontalDivider()
+            val arrange = state.arrange
+            Text("Arrange the plate", style = MaterialTheme.typography.labelLarge)
+            LabeledSlider("Spacing between models", "%.1f mm".format(arrange.spacingMm), arrange.spacingMm, 0f..20f) {
+                onArrangeSettings(arrange.copy(spacingMm = it))
+            }
+            LabeledSlider("Margin from the edge", "%.1f mm".format(arrange.marginMm), arrange.marginMm, 0f..20f) {
+                onArrangeSettings(arrange.copy(marginMm = it))
+            }
+            FilterChip(
+                selected = arrange.allowRotation,
+                onClick = { onArrangeSettings(arrange.copy(allowRotation = !arrange.allowRotation)) },
+                label = { Text("Turn models to fit") },
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onArrange) { Text("Arrange now") }
+                Text(
+                    "packs the plate without overlap",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-                if (showPosition) OutlinedButton(onClick = onCenter) { Text("Center") }
+                OutlinedButton(onClick = onCenter) { Text("Center") }
                 OutlinedButton(onClick = onFit) { Text("Fit") }
                 OutlinedButton(onClick = {
                     onChange(Placement(centerX = bed?.centerX ?: p.centerX, centerY = bed?.centerY ?: p.centerY))

@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +53,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.lumen.slicer.core.mesh.Placement
 import dev.lumen.slicer.core.resin.ResinFormat
+import dev.lumen.slicer.core.resin.ResinPlacement
 import dev.lumen.slicer.core.resin.ResinPrinter
 import dev.lumen.slicer.core.resin.ResinProfile
 import dev.lumen.slicer.core.settings.BedShape
@@ -76,10 +79,30 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
     }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showPlacement by rememberSaveable { mutableStateOf(false) }
+    val renderer = remember { PlateRenderer() }
+    val gesture = remember { PlateGesture(renderer, viewModel::setPlacement) }
+    // Read in the composable body so a selection change reaches the renderer through the view update.
+    val selected = gesture.selected
+    LaunchedEffect(state.model?.name) {
+        if (gesture.modelName != state.model?.name) {
+            gesture.selected = false
+            gesture.modelName = state.model?.name
+        }
+    }
 
     val printer = state.resinPrinter
     val bed = remember(printer?.name) {
         printer?.let { BedShape.rectangle(0f, 0f, it.buildWidthMm.toFloat(), it.buildDepthMm.toFloat()) }
+    }
+    // The engine's raster is corner-origin, so "on the plate" means the model sits at half the panel —
+    // which is what makes a fresh resin slice land mid-plate. Put it there when the model or printer
+    // changes; after that the user's own drag wins (sliceResin only clamps the footprint back on).
+    // centreModel() is the placement frame's own answer for the resin side, i.e. the panel's centre.
+    LaunchedEffect(printer?.name, state.model?.name) {
+        val m = state.model ?: return@LaunchedEffect
+        val p = printer ?: return@LaunchedEffect
+        val (cx, cy) = ResinPlacement.bedCentre(p)
+        if (m.placement.centerX != cx || m.placement.centerY != cy) viewModel.centerModel()
     }
 
     PlateShell(
@@ -99,6 +122,7 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
             IconButton(onClick = { openModel.launch(arrayOf("*/*")) }) { Icon(Icons.Default.Add, "Open STL") }
             if (state.model != null) {
                 IconButton(onClick = { showPlacement = true }) { Icon(Icons.Default.Build, "Move / rotate / scale") }
+                TextButton(onClick = { viewModel.arrangePlate() }) { Text("Arrange") }
             }
             IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "Resin settings") }
             state.resinOutput?.let { out ->
@@ -106,15 +130,20 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
             }
         },
     ) {
-        val renderer = remember { PlateRenderer() }
         val framed = remember { arrayOfNulls<BedShape>(1) }
-        SceneView(renderer, Modifier.fillMaxSize()) { r ->
+        SceneView(renderer, Modifier.fillMaxSize(), gesture) { r ->
             if (bed != null && framed[0] != bed) {
                 r.camera.frame(bed.centerX, bed.centerY, 0f, max(bed.width, bed.depth) * 0.6f)
                 framed[0] = bed
             }
             r.setBed(bed, (printer?.buildHeightMm ?: 200.0).toFloat())
-            r.setModel(state.model?.placed, true)
+            // The resin bed is the panel itself, corner-origin in the engine's frame, so a model that
+            // is dragged off the print area is still shown where the user put it — the slice path
+            // clamps it back on. See MainViewModel.sliceResin.
+            val m = state.model
+            gesture.bounds = m?.placed?.worldAabb()
+            gesture.placement = m?.placement ?: Placement()
+            r.setModel(m?.placed, true, selected)
         }
         ResinSummary(state, onClick = { showSettings = true }, modifier = Modifier.align(Alignment.TopCenter))
         if (state.model == null) {
@@ -125,6 +154,8 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
                     Button(onClick = { openModel.launch(arrayOf("*/*")) }) { Text("Open STL") }
                 }
             }
+        } else {
+            ModelBar(state.model.size, true, gesture, Modifier.align(Alignment.BottomStart).padding(12.dp))
         }
     }
 
@@ -141,7 +172,9 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
             onFit = viewModel::fitToBuildVolume,
             onLayFlat = viewModel::layFlat,
             onDismiss = { showPlacement = false },
-            showPosition = false,
+            onArrange = viewModel::arrangePlate,
+            onArrangeSettings = viewModel::setArrange,
+            plateBed = bed,
         )
     }
     ResinSliceDialog(state.resinSlice, viewModel::cancelResinSlice, viewModel::dismissResinError)

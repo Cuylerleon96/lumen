@@ -4,6 +4,7 @@ import dev.lumen.slicer.core.Technology
 import dev.lumen.slicer.core.gcode.Toolpaths
 import dev.lumen.slicer.core.mesh.Mesh
 import dev.lumen.slicer.core.mesh.Placement
+import dev.lumen.slicer.core.mesh.PlateArranger
 import dev.lumen.slicer.core.mesh.Vec3
 import dev.lumen.slicer.core.profiles.Catalog
 import dev.lumen.slicer.core.resin.ResinFormat
@@ -67,4 +68,6 @@ data class UiState(
     val library: List<File> = emptyList(),
     /** Pending "which units is this file in?" prompt for an oversized model. */
     val unitPrompt: UnitPrompt? = null,
+    /** How auto-arrange should pack the plate (spacing, margin, 90° rotations). */
+    val arrange: PlateArranger.Settings = PlateArranger.Settings(),
 )

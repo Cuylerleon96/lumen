@@ -3,6 +3,7 @@ package dev.lumen.slicer.render
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import dev.lumen.slicer.core.mesh.Mesh
+import dev.lumen.slicer.core.mesh.Picking
 import dev.lumen.slicer.core.settings.BedShape
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -20,8 +21,8 @@ abstract class SceneRenderer : GLSurfaceView.Renderer {
     protected val mvp = FloatArray(16)
     protected lateinit var lineProgram: GlProgram
     protected var lineWidth = 1f
-    private var width = 1
-    private var height = 1
+    @Volatile private var width = 1
+    @Volatile private var height = 1
 
     @Volatile private var bed: Bed? = null
     private var bedLines: GlBuffer? = null
@@ -71,6 +72,28 @@ abstract class SceneRenderer : GLSurfaceView.Renderer {
 
     protected abstract fun drawScene()
 
+    /** The viewport size in pixels, for screen coordinates that have to become world ones. */
+    fun viewport(out: IntArray) {
+        out[0] = width
+        out[1] = height
+    }
+
+    /**
+     * The world-space ray through a screen pixel. The arithmetic lives in `:core` ([Picking]) so it is
+     * unit-tested; this only hands it the camera, and it must agree with [OrbitCamera.viewProjection]
+     * (same eye, target and field of view) or a tap lands somewhere else on the bed.
+     */
+    fun rayFor(sx: Float, sy: Float): Picking.Ray {
+        val e = FloatArray(3)
+        val t = FloatArray(3)
+        camera.eye(e)
+        camera.targetOf(t)
+        return Picking.rayForPixel(e[0], e[1], e[2], t[0], t[1], t[2], camera.fovYDeg, width, height, sx, sy)
+    }
+
+    /** A snapshot of the last view-projection matrix, so bounds can be projected to screen. */
+    fun mvpSnapshot(): FloatArray = mvp.copyOf()
+
     private fun drawBed() {
         val current = bed ?: return
         if (bedDirty) {
@@ -87,14 +110,30 @@ abstract class SceneRenderer : GLSurfaceView.Renderer {
         drawLines(bedOutline!!, rgba(0x8A94A6), lineWidth)
     }
 
-    /** Draws position-only lines in one colour. */
-    protected fun drawLines(buffer: GlBuffer, color: FloatArray, width: Float) {
+    /** Draws position-only lines in one colour, optionally through the live drag transform. */
+    protected fun drawLines(
+        buffer: GlBuffer,
+        color: FloatArray,
+        width: Float,
+        offset: FloatArray? = null,
+        pivot: FloatArray? = null,
+        angle: Float = 0f,
+    ) {
         lineProgram.use()
         GLES20.glLineWidth(width)
         GLES20.glUniformMatrix4fv(lineProgram.uniform("uMvp"), 1, false, mvp, 0)
         GLES20.glUniform4fv(lineProgram.uniform("uColor"), 1, color, 0)
         GLES20.glUniform1f(lineProgram.uniform("uUseVertexColor"), 0f)
         GLES20.glUniform1f(lineProgram.uniform("uBrightness"), 1f)
+        GLES20.glUniform3f(
+            lineProgram.uniform("uOffset"),
+            offset?.get(0) ?: 0f, offset?.get(1) ?: 0f, offset?.get(2) ?: 0f,
+        )
+        GLES20.glUniform3f(
+            lineProgram.uniform("uPivot"),
+            pivot?.get(0) ?: 0f, pivot?.get(1) ?: 0f, pivot?.get(2) ?: 0f,
+        )
+        GLES20.glUniform1f(lineProgram.uniform("uAngle"), angle)
         val position = lineProgram.attribute("aPosition")
         val colorAttribute = lineProgram.attribute("aColor")
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, buffer.id)

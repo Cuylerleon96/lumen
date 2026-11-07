@@ -121,8 +121,31 @@ class OrbitCamera {
         val projection = FloatArray(16)
         Matrix.setLookAtM(view, 0, eyeX, eyeY, eyeZ, target[0], target[1], target[2], 0f, 0f, 1f)
         val aspect = width.toFloat() / max(1, height)
-        Matrix.perspectiveM(projection, 0, 40f, aspect, max(0.5f, distance / 200f), distance * 20f + 2000f)
+        Matrix.perspectiveM(projection, 0, FOV_Y_DEG, aspect, max(0.5f, distance / 200f), distance * 20f + 2000f)
         Matrix.multiplyMM(out, 0, projection, 0, view, 0)
+    }
+
+    /** The camera's world-space eye point — what the picking ray starts from. */
+    @Synchronized
+    fun eye(out: FloatArray) {
+        val y = Math.toRadians(yaw.toDouble())
+        val p = Math.toRadians(pitch.toDouble())
+        out[0] = target[0] + (distance * cos(p) * cos(y)).toFloat()
+        out[1] = target[1] + (distance * cos(p) * sin(y)).toFloat()
+        out[2] = target[2] + (distance * sin(p)).toFloat()
+    }
+
+    /** The point the camera looks at. */
+    @Synchronized
+    fun targetOf(out: FloatArray) {
+        out[0] = target[0]; out[1] = target[1]; out[2] = target[2]
+    }
+
+    /** The vertical field of view [viewProjection] uses — a ray cast has to agree with it exactly. */
+    val fovYDeg: Float get() = FOV_Y_DEG
+
+    private companion object {
+        const val FOV_Y_DEG = 40f
     }
 }
 
@@ -135,9 +158,24 @@ object Shaders {
         uniform vec4 uColor;
         uniform float uUseVertexColor;
         uniform float uBrightness;
+        // Same live transform as MESH_VERTEX so a selection outline can follow the finger. Left unset
+        // they are all zero, which is the identity — the bed lines are unaffected.
+        uniform vec3 uOffset;
+        uniform vec3 uPivot;
+        uniform float uAngle;
         varying vec4 vColor;
+        vec3 transformed(vec3 p) {
+            if (uAngle != 0.0) {
+                float a = radians(uAngle);
+                float c = cos(a);
+                float s = sin(a);
+                vec2 d = p.xy - uPivot.xy;
+                p.xy = uPivot.xy + vec2(c * d.x - s * d.y, s * d.x + c * d.y);
+            }
+            return p + uOffset;
+        }
         void main() {
-            gl_Position = uMvp * vec4(aPosition, 1.0);
+            gl_Position = uMvp * vec4(transformed(aPosition), 1.0);
             vec4 c = mix(uColor, aColor, uUseVertexColor);
             vColor = vec4(c.rgb * uBrightness, c.a);
         }
@@ -151,12 +189,30 @@ object Shaders {
 
     const val MESH_VERTEX = """
         uniform mat4 uMvp;
+        // Live, uncommitted transform for the model drag: an offset in the bed plane and a rotation
+        // about world Z through uPivot. Applying it here (not by rebuilding the mesh) is what keeps a
+        // drag smooth — re-uploading a 400k-triangle buffer per frame would stall the finger.
+        uniform vec3 uOffset;
+        uniform vec3 uPivot;
+        uniform float uAngle;
         attribute vec3 aPosition;
         attribute vec3 aNormal;
         varying vec3 vNormal;
         void main() {
-            gl_Position = uMvp * vec4(aPosition, 1.0);
-            vNormal = aNormal;
+            vec3 p = aPosition;
+            vec3 n = aNormal;
+            if (uAngle != 0.0) {
+                float a = radians(uAngle);
+                float c = cos(a);
+                float s = sin(a);
+                vec2 d = p.xy - uPivot.xy;
+                p.xy = uPivot.xy + vec2(c * d.x - s * d.y, s * d.x + c * d.y);
+                vec2 dn = n.xy;
+                n.xy = vec2(c * dn.x - s * dn.y, s * dn.x + c * dn.y);
+            }
+            p += uOffset;
+            gl_Position = uMvp * vec4(p, 1.0);
+            vNormal = n;
         }
     """
 

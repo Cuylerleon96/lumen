@@ -5,9 +5,23 @@ Status marks: **✅ done** · **🚧 in progress** · **🔜 next (P0)** · **�
 Method/reference for each *how* → `docs/research/feature-methods.md`. Feature inventory origin →
 `docs/research/lychee-feature-gap.md`.
 
-_Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
+_Last updated: 2026-11-07 (plate manipulation, auto-arrange UI, the raster-transpose fix — and an
+independent CTB validator)._
 
 ## Progress log
+- **2026-11-07 — tap-to-move/rotate on the plate, the auto-arrange UI, and the raster-transpose fix.**
+  **Tap the model to select it** (accent tint + a footprint outline), then `Move` or `Rotate` and drag:
+  the model slides in the bed plane 1:1 under the finger, or turns about Z. A drag that starts OFF the
+  model still orbits the camera and two fingers still pan/zoom, so no mode ever traps the view; the live
+  transform is a **shader uniform**, so a drag never re-uploads the mesh, and only the *committed*
+  transform reaches the placement (an interrupted gesture leaves no trace). The screen→world maths lives
+  in `:core` (`Picking`) so it is unit-tested (`PickingTest`). **Auto-arrange gained its UI** — an
+  *Arrange* button on both plates plus spacing / margin / turn-to-fit in the placement sheet (persisted
+  in `state.json`) — and packs then **centres** the group. Also fixed: resin slicing **ignored the
+  position the user set** (every model was force-centred) and now honours it, clamping only the footprint
+  onto the print area. **Known gap: the plate holds ONE model**, so arrange centres it and the
+  spacing/margin knobs only bite with two or more — multi-model is blocked on the FDM engine accepting
+  more than one object.
 - **2026-11-07 — target printers corrected to the real machines: Anycubic Photon Mono X (4K) and
   Photon Mono X 6K.** Both are now built-in entries, listed first, with the 6K's pixel pitch at **34.4 µm**
   (corrected the same day from 34.0 µm: 34.0 comes from dividing the *published build volume* 195.84 × 122.4
@@ -112,7 +126,12 @@ _Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
 - ✅ **Orca `libslic3r` engine** cross-compiled for arm64.
 - ✅ ~950 Orca printer profiles (bundled).
 - ✅ Print/filament/process settings editor (the tabbed `SettingsScreen`).
-- ✅ Slice → G-code; layer/toolpath preview; print time + filament estimate.
+- ✅ Slice → G-code; layer/toolpath preview; print time + filament estimate. **The preview's slice data
+  was verified independently** (2026-11-07): the app's own FDM output parsed by an outside Python parser
+  and plotted is clean nested perimeters, and the app renders the same G-code cleanly — so a reported
+  preview "tangle" is neither the G-code nor the parser layout. The one odd-looking line in the preview
+  is the stock OrcaSlicer intro/prime extrusion, drawn green as `Custom`. Not yet reproduced on the
+  reporter's own model — see the handoff's Open item 1.
 - ✅ Tree/normal supports, brim, spiral vase (engine features).
 - 📋 G-code post-processing scripts; per-object settings; calibration wizards (flow/PA/temp).
   — **✅ calibration towers + the G-code ramp** (`CalibrationModels.fdmTower` + `GcodeCalibration`:
@@ -166,23 +185,32 @@ _Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
 - ✅ **Resin volume/weight/cost + print-time** estimate — `ResinEstimator` (volume→mass→cost) +
   `ResinSettings.estimatedPrintTimeSec` (per-layer exposure + light-off + motion); shown live in the
   resin summary; density + price/kg settings.
-### Known bugs (found, not yet fixed)
+### Fixed 2026-11-07 — the SL1→container raster transpose (verified)
 
-**The SL1→container converters inherit the engine's TRANSPOSED raster.** PrusaSlicer's SLA layer PNG has
-its **width = the panel's Y pixel count** and height = the X count (measured: the engine default
-2560×1440 emits a 1440×2560 image). Every converter passes those dims through as `resolutionX/Y`, so a
-CTB/GOO/PW for the Mono X 6K declares **3600×5760** on a **5760×3600** panel. Reported by Cuyler as
-"small sections and details are getting messed up and not brought over after slicing". Fix = rotate the
-mask 90° into the target format's orientation and use the printer's own resolutionX/Y in the header.
-**Direction (CW vs CCW) and any flip must be determined empirically** — slice an asymmetric marker and
-look at where it lands — because getting it backwards mirrors the print. The SLA config's
-`display_orientation` key is the likely place the engine encodes its convention.
+The engine's layer PNG is **transposed** relative to the panel (its width is the panel's Y pixel count)
+*and* world X runs down it **reversed** (`image-y == panelW - world X`), so a container that took the PNG's
+dims as `resolutionX/Y` shipped a print rotated a quarter turn. **Measured, not inferred:** three
+size-tagged markers at world (0,0) / (+30,0) / (0,+20) mm sliced through the standalone engine CLI landed
+with their ink at image-x 0..12 mm and image-y 88..120 mm, measuring exactly their nominal 6.00 and
+12.00 mm — a wrong mm-per-pixel would have shown up as a wrong marker size, so the reading checks itself
+(and the markers' negative halves were missing, independently confirming the corner-origin raster). The
+fix is a **90° clockwise** rotation into the panel frame: verified on real pixels, the source's
+bottom-left ink (world X=0, Y=0) becomes the result's row 0 / column 0.
 
-`Sl1ToPw` additionally **asserts the wrong dimensions** (`width == printer.resolutionX`), so against a
-real engine SL1 it throws every time — i.e. the Anycubic format, the default for both target machines,
-currently cannot produce a file at all. Its test passed because the fixture SL1 was built with the
-printer's own dimensions rather than the engine's transposed ones; **fixtures must reproduce what the
-engine actually emits.**
+`RasterOrient` (`:core`) owns the transform; CTB, GOO and Anycubic now rotate the mask and declare the
+**panel's** dims, and a raster matching neither the panel nor its transpose is still **refused** rather
+than scaled — that mismatch is the signature of dropped `display_*` keys, and silently rescaling it
+hides the fault behind a print that is subtly the wrong size. **`Sl1ToPw` no longer throws on real engine
+output**, so the Anycubic format — the default for both target machines — produces a file again.
+
+Evidence: `RasterOrientTest` (hand-computed 3×2 → 2×3 rotation; the same world pattern encoded in both
+frames; a counter-rotation control that must NOT pass), `Sl1ToPwTest` on a **non-square** panel where the
+two frames are distinguishable (the old fixture was square *and* built the PNG the natural way round,
+which is how this shipped), and the bundled **real** engine SL1 (90 layers of 1440×2560) converting for a
+2560×1440 panel — `scripts/ctb_validate.py` then decodes our CTB with an independent parser and confirms
+the layer is **pixel-for-pixel** the source rotated 90° CW, with all 90 blobs decoding to exactly the
+declared size. Reported by Cuyler as "small sections and details are getting messed up and not brought
+over after slicing".
 
 ## D.8 Output formats
 - ✅ SL1 / SL1S.
@@ -222,6 +250,10 @@ engine actually emits.**
 ## H. Touch interaction & input
 Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · stylus · per-tool mapping).
 - ✅ 3D nav: 1-finger orbit, 2-finger pan, pinch zoom (`SceneView`).
+- ✅ **Tap to select, then move/rotate the model directly** (`PlateGesture` + `PlateTool`): tap the
+  model = selected (accent tint + footprint outline) and a Move/Rotate chip row; **Move** drags it
+  across the bed, **Rotate** turns it about Z. A drag starting off the model orbits, and two fingers
+  always pan/zoom — so the camera is never trapped in a tool. Live transform via a shader uniform.
 - 📋 **Tool rail** (Navigate/Select/Move/Support/Paint/Hollow/Cut/Measure/Text) + active-tool state.
 - 📋 **Loupe** (magnifier) for placement/paint precision · **dual-finger offset cursor** · **nudge pad** (0.1/1 mm).
 - 📋 **Stylus**: hover preview, pressure = brush size, side button = erase, palm rejection.
@@ -245,7 +277,7 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
   rotate/scale only (origin-centred SLA bed). **Mirror X/Y/Z** done.
 - 📋 **Auto-Drop** (drop to plate) · **Center on plate** · **place-on-face / lay-flat** · **auto-orient** (min overhang/support, deterministic).
 - 📋 **Scale** uniform/per-axis · % / mm · **fit-to-build-volume** · **Mirror X/Y/Z** · **Duplicate/array/clone**.
-- 🟡 **Arrange / auto-arrange** — fit multiple models on the plate without overlap — **and its
+- ✅ **Arrange / auto-arrange** — fit multiple models on the plate without overlap — **and its
   settings**: inter-object **spacing**, **rotate-for-arrange** (allowed rotations 0/90/180/270),
   **allow mirroring**, algorithm (grid / spiral / nested), keep-grouped, **per-plate / all-plates**,
   **multi-plate overflow**, warn on no-fit, and auto-arrange after clone.
@@ -253,7 +285,10 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
   margin respected, 90° rotation tried when it helps, and anything that does not fit is *reported*
   rather than dropped. 9 tests, including an explicit pairwise no-overlap check and a spacing check —
   the spacing check caught a real overlap bug (the first wrap laid row 2 on top of row 1).
-  **Remaining: the UI** (button + the settings surface) and wiring spots into the model list.
+  **UI landed 2026-11-07:** an *Arrange* button on both plates (packing then **centring** the group,
+  since packing from the corner reads as a bug) and spacing / margin / turn-to-fit in the placement
+  sheet, persisted in `state.json`. **What is left is multi-model itself** — with one model the knobs
+  have nothing to space, and the plate can hold only one until the FDM engine takes several objects.
   Build it on the placement frame settled 2026-11-07: the engine's raster is **corner-origin** (world
   (0,0)..(panelW, panelH)), so "on the plate" means the model's centre at half the panel. Arranging
   against the wrong frame clips every object silently — that is exactly the bug that took three

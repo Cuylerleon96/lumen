@@ -143,11 +143,70 @@ class PlateArrangerTest {
     }
 
     @Test
-    fun `spots come back in the caller's input order`() {
-        val items = listOf(item(5, 10.0, 10.0), item(2, 60.0, 60.0), item(9, 20.0, 20.0))
+    fun `centring moves the group to the middle without changing its layout`() {
+        val items = List(3) { item(it, 40.0, 30.0) }
+        val packed = PlateArranger.arrange(items, bedW, bedD, spacingMm = 3.0, marginMm = 2.0)
 
-        val r = PlateArranger.arrange(items, bedW, bedD)
+        val centred = PlateArranger.centre(packed, items, bedW, bedD)
 
-        assertEquals(listOf(5, 2, 9), r.spots.map { it.id }, "the UI maps spots to models by position")
+        val boxes = centred.spots.map { boxOf(it, items[it.id]) }
+        val left = boxes.minOf { it[0] }; val right = boxes.maxOf { it[1] }
+        val front = boxes.minOf { it[2] }; val back = boxes.maxOf { it[3] }
+        // Spot positions are Floats (~7 significant digits), so a micrometre is the honest tolerance
+        // here; demanding 1e-6 mm of a Float is asserting precision the type does not have.
+        assertEquals(bedW / 2, (left + right) / 2, 1e-3, "the group must be centred across the plate")
+        assertEquals(bedD / 2, (front + back) / 2, 1e-3, "and along it")
+
+        // The arrangement itself is untouched: every spot moved by the SAME offset...
+        val shiftX = centred.spots[0].centerX - packed.spots[0].centerX
+        val shiftY = centred.spots[0].centerY - packed.spots[0].centerY
+        for (i in items.indices) {
+            assertEquals(shiftX, centred.spots[i].centerX - packed.spots[i].centerX, 1e-3f)
+            assertEquals(shiftY, centred.spots[i].centerY - packed.spots[i].centerY, 1e-3f)
+        }
+        // ...which keeps them apart, and keeps them on the plate.
+        for (i in boxes.indices) for (j in i + 1 until boxes.size) {
+            assertFalse(overlaps(boxes[i], boxes[j]), "centring must not introduce an overlap")
+        }
+        for (b in boxes) {
+            assertTrue(
+                b[0] >= -1e-6 && b[1] <= bedW + 1e-6 && b[2] >= -1e-6 && b[3] <= bedD + 1e-6,
+                "centring must not push anything off the plate: ${b.toList()}",
+            )
+        }
+    }
+
+    @Test
+    fun `centring a single model puts it in the middle of the plate`() {
+        // The plate holds one model today, so this is the case the button actually produces: pack from
+        // the corner, then centre -- a plate hugging a corner reads as a bug.
+        val items = listOf(item(0, 60.0, 40.0))
+        val packed = PlateArranger.arrange(items, bedW, bedD, marginMm = 2.0)
+
+        val centred = PlateArranger.centre(packed, items, bedW, bedD).spots.single()
+
+        assertEquals(bedW / 2, centred.centerX.toDouble(), 1e-3)
+        assertEquals(bedD / 2, centred.centerY.toDouble(), 1e-3)
+    }
+
+    @Test
+    fun `an empty arrangement centres to nothing`() {
+        val r = PlateArranger.centre(PlateArranger.Result(emptyList(), emptyList(), 0), emptyList(), bedW, bedD)
+
+        assertTrue(r.spots.isEmpty())
+        assertTrue(r.unplaced.isEmpty())
+    }
+
+    @Test
+    fun `settings carry through to the arrangement`() {
+        // The persisted knobs are what the button uses, so the two must agree.
+        val items = List(4) { item(it, 40.0, 30.0) }
+        val settings = PlateArranger.Settings(spacingMm = 7.5f, marginMm = 12f, allowRotation = false)
+
+        val viaSettings = PlateArranger.arrange(items, bedW, bedD, settings)
+        val explicit = PlateArranger.arrange(items, bedW, bedD, spacingMm = 7.5, marginMm = 12.0, allowRotation = false)
+
+        assertEquals(explicit.spots, viaSettings.spots)
+        assertEquals(explicit.unplaced, viaSettings.unplaced)
     }
 }

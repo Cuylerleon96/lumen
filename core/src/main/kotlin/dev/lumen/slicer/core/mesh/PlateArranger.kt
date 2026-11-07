@@ -1,6 +1,8 @@
 package dev.lumen.slicer.core.mesh
 
+import kotlinx.serialization.Serializable
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Auto-arrange: fit N models on the plate without overlap.
@@ -21,6 +23,20 @@ import kotlin.math.max
  * for why that distinction is worth a comment this long.
  */
 object PlateArranger {
+
+    /**
+     * The arrangement knobs, as the user sets them. Persisted with the project so a plate that was
+     * arranged one way comes back the same way.
+     */
+    @Serializable
+    data class Settings(
+        /** Gap to keep between neighbouring models, mm (and between a model and the margin). */
+        val spacingMm: Float = 3f,
+        /** Keep-out border around the plate edge, mm. */
+        val marginMm: Float = 2f,
+        /** Try 90° rotations — usually the difference between fitting one more model and not. */
+        val allowRotation: Boolean = true,
+    )
 
     /** A model's footprint on the plate, in mm. [id] is the caller's handle for the model. */
     data class Item(val id: Int, val widthMm: Double, val depthMm: Double) {
@@ -119,5 +135,46 @@ object PlateArranger {
         // Report in the caller's input order so a UI can map spots to models without sorting.
         val byId = spots.associateBy { it.id }
         return Result(items.mapNotNull { byId[it.id] }, unplaced, rows)
+    }
+
+    /** [arrange] with the user's persisted knobs. */
+    fun arrange(items: List<Item>, bedWidthMm: Double, bedDepthMm: Double, settings: Settings): Result =
+        arrange(
+            items = items,
+            bedWidthMm = bedWidthMm,
+            bedDepthMm = bedDepthMm,
+            spacingMm = settings.spacingMm.toDouble(),
+            marginMm = settings.marginMm.toDouble(),
+            allowRotation = settings.allowRotation,
+        )
+
+    /**
+     * Slide the whole packed group into the middle of the plate.
+     *
+     * The packing above starts at the corner, which is deterministic and easy to pin in a test — but a
+     * plate whose contents hug one corner reads as a bug, and every desktop slicer centres the group.
+     * The group's internal layout is untouched (relative distances are exactly as arranged), and since
+     * the group already fits inside the margins, centring cannot push anything off the plate.
+     */
+    fun centre(result: Result, items: List<Item>, bedWidthMm: Double, bedDepthMm: Double): Result {
+        if (result.spots.isEmpty()) return result
+        val byId = items.associateBy { it.id }
+        var minX = Double.MAX_VALUE; var maxX = -Double.MAX_VALUE
+        var minY = Double.MAX_VALUE; var maxY = -Double.MAX_VALUE
+        for (spot in result.spots) {
+            val item = byId[spot.id] ?: continue
+            val w = if (spot.rotated) item.depthMm else item.widthMm
+            val d = if (spot.rotated) item.widthMm else item.depthMm
+            minX = min(minX, spot.centerX - w / 2.0); maxX = max(maxX, spot.centerX + w / 2.0)
+            minY = min(minY, spot.centerY - d / 2.0); maxY = max(maxY, spot.centerY + d / 2.0)
+        }
+        if (minX > maxX || minY > maxY) return result
+        val shiftX = (bedWidthMm - (maxX - minX)) / 2.0 - minX
+        val shiftY = (bedDepthMm - (maxY - minY)) / 2.0 - minY
+        return result.copy(
+            spots = result.spots.map {
+                it.copy(centerX = (it.centerX + shiftX).toFloat(), centerY = (it.centerY + shiftY).toFloat())
+            },
+        )
     }
 }

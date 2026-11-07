@@ -3,6 +3,7 @@ package dev.lumen.slicer.data
 import android.content.Context
 import dev.lumen.slicer.core.Technology
 import dev.lumen.slicer.core.mesh.Placement
+import dev.lumen.slicer.core.mesh.PlateArranger
 import dev.lumen.slicer.core.profiles.PresetRef
 import dev.lumen.slicer.core.resin.ResinSettings
 import dev.lumen.slicer.core.settings.PresetEdits
@@ -30,6 +31,8 @@ data class SavedState(
     val technology: Technology? = null,
     val resinPrinterName: String? = null,
     val resinSettings: ResinSettings? = null,
+    /** Auto-arrange knobs; null in an older state file, which then uses the defaults. */
+    val arrange: PlateArranger.Settings? = null,
 )
 
 /** Persists [SavedState] as JSON in app storage, and keeps a copy of the current model. */
