@@ -9,7 +9,8 @@ import java.util.zip.ZipInputStream
  * Converts a PrusaSlicer **SL1** (ZIP of 8-bit grayscale PNGs) into a **CTB** for Chitubox-family
  * printers. Uses [PngDecoder] + [CtbWriter]; no native code, pure core.
  *
- * The engine emits the SL1; this re-containers it so a printer that wants CTB gets CTB.
+ * Layers are decoded and RLE7-encoded **one at a time** — only the small compressed blobs are held,
+ * so a 500+ layer print never loads ~2 GB of full-resolution masks into memory (an OOM trap on-device).
  */
 object Sl1ToCtb {
 
@@ -28,13 +29,28 @@ object Sl1ToCtb {
         printTimeSec: Int,
         out: OutputStream,
     ) {
-        val layers = readLayers(sl1)                 // bottom → top
-        require(layers.isNotEmpty()) { "SL1 contained no layer images" }
-        val w = layers.first().width
-        val h = layers.first().height
-
-        // engine grayscale is 0..255; CTB is 0..127
-        val masks = layers.map { img -> ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() } }
+        val named = ArrayList<Pair<String, ByteArray>>()
+        var width = 0
+        var height = 0
+        ZipInputStream(ByteArrayInputStream(sl1)).use { zip ->
+            var e = zip.nextEntry
+            while (e != null) {
+                if (e.name.endsWith(".png", ignoreCase = true)) {
+                    val baos = ByteArrayOutputStream()
+                    zip.copyTo(baos)
+                    val img = PngDecoder.decode(baos.toByteArray())
+                    if (width == 0) { width = img.width; height = img.height }
+                    // engine grayscale 0..255 → CTB 0..127
+                    val mask = ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }
+                    named += e.name to CtbWriter.encodeRle7(mask)   // small blob; mask is freed next iteration
+                }
+                zip.closeEntry()
+                e = zip.nextEntry
+            }
+        }
+        require(named.isNotEmpty()) { "SL1 contained no layer images" }
+        // PrusaSlicer names layers <jobid><zero-padded index>.png — lexicographic order = layer order.
+        val encoded = named.sortedBy { it.first }.map { it.second }
 
         val params = CtbWriter.Params(
             printerOutMmX = printer.buildWidthMm.toFloat(),
@@ -47,8 +63,8 @@ object Sl1ToCtb {
             lightOffS = settings.lightOffSec.toFloat(),
             bottomLightOffS = settings.bottomLightOffSec.toFloat(),
             bottomLayerCount = settings.bottomLayers,
-            resolutionX = w,
-            resolutionY = h,
+            resolutionX = width,
+            resolutionY = height,
             printTimeS = printTimeSec,
             bottomLiftDistMm = settings.liftDistanceMm.toFloat(),
             liftDistMm = settings.liftDistanceMm.toFloat(),
@@ -57,25 +73,6 @@ object Sl1ToCtb {
             retractSpeedMmpm = settings.retractSpeedMmPerMin.toFloat(),
             machineType = printer.name.take(24),
         )
-        CtbWriter.write(out, w, h, masks, params)
-    }
-
-    /** Reads `*.png` members of the SL1 ZIP in layer order (names are `<jobid><index>.png`). */
-    private fun readLayers(sl1: ByteArray): List<PngDecoder.Image> {
-        val named = ArrayList<Pair<String, PngDecoder.Image>>()
-        ZipInputStream(ByteArrayInputStream(sl1)).use { zip ->
-            var e = zip.nextEntry
-            while (e != null) {
-                if (e.name.endsWith(".png", ignoreCase = true)) {
-                    val baos = ByteArrayOutputStream()
-                    zip.copyTo(baos)
-                    named += e.name to PngDecoder.decode(baos.toByteArray())
-                }
-                zip.closeEntry()
-                e = zip.nextEntry
-            }
-        }
-        // PrusaSlicer names layers <jobid><zero-padded index>.png — lexicographic order = layer order.
-        return named.sortedBy { it.first }.map { it.second }
+        CtbWriter.writeEncoded(out, width, height, encoded, params)
     }
 }

@@ -56,6 +56,16 @@ object CtbWriter {
      */
     fun write(out: OutputStream, width: Int, height: Int, layers: List<ByteArray>, p: Params) {
         require(layers.all { it.size == width * height }) { "layer size != ${width}x$height" }
+        writeEncoded(out, width, height, layers.map { encodeRle7(it) }, p)
+    }
+
+    /**
+     * Streaming-friendly variant: [encodedLayers] are already RLE7-encoded blobs (see [encodeRle7]).
+     * Callers that decode layers one at a time (e.g. from an SL1) use this to avoid holding every
+     * full-resolution mask in memory at once.
+     */
+    fun writeEncoded(out: OutputStream, width: Int, height: Int, encodedLayers: List<ByteArray>, p: Params) {
+        val layers = encodedLayers
 
         val buf = ByteArrayOutputStream()
         // --- fixed header (0x70) ---
@@ -145,7 +155,7 @@ object CtbWriter {
             val z = p.layerHeightMm * (i + 1)
             val expo = if (bottom) p.bottomExposureS else p.exposureS
             val off = if (bottom) p.bottomLightOffS else p.lightOffS
-            val data = rle7(layer)
+            val data = layer   // already RLE7-encoded
             val dataOffset = buf.size()
             buf.write(data)
             val rec = i * LAYER_HEADER_SIZE
@@ -205,7 +215,7 @@ object CtbWriter {
     }
 
     /** RLE7: bits 6:0 = value, bit 7 = run flag; run length follows, big-endian with MSB prefixes. */
-    private fun rle7(layer: ByteArray): ByteArray {
+    fun encodeRle7(layer: ByteArray): ByteArray {
         val out = ByteArrayOutputStream()
         var i = 0
         while (i < layer.size) {
