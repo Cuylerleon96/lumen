@@ -121,7 +121,7 @@ fun PreviewScreen(state: UiState, viewModel: MainViewModel) {
                     }
                     r.setBed(bed, state.printableHeight)
                     r.setToolpaths(toolpaths)
-                    r.setView(PreviewView(layer, singleLayer, travels, hidden))
+                    r.setView(PreviewView(layer, singleLayer, travels, hidden, state.inputs?.lineWidthMm() ?: 0.42f))
                 }
                 StatsCard(toolpaths.stats, layerCount, Modifier.align(Alignment.TopStart).padding(12.dp))
             }

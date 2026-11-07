@@ -6,6 +6,7 @@ import io.github.whoxllm.orcamicro.core.settings.PresetEditor
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -55,6 +56,15 @@ class SliceInputs(
     val filament: JsonObject,
     val bedType: BedType,
 ) {
+    /** Effective extrusion width in mm: the `line_width` setting, else nozzle diameter × 1.05. */
+    fun lineWidthMm(): Float {
+        val lw = (process["line_width"] as? JsonPrimitive)?.contentOrNull?.toFloatOrNull() ?: 0f
+        if (lw > 0.01f) return lw
+        val nozzle = ((machine["nozzle_diameter"] as? JsonArray)?.firstOrNull() ?: machine["nozzle_diameter"])
+            ?.let { (it as? JsonPrimitive)?.contentOrNull }?.toFloatOrNull() ?: 0.4f
+        return nozzle * 1.05f
+    }
+
     companion object {
         /** Applies [edits] to flattened presets and pins the bed type that picks the bed temperatures. */
         fun build(machine: JsonObject, process: JsonObject, filament: JsonObject, edits: PresetEdits): SliceInputs {
