@@ -1,0 +1,62 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 31cb4c0..f683ce8 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -472,8 +472,10 @@ endif ()
+ 
+ find_package(PNG REQUIRED)
+ 
+-set(OpenGL_GL_PREFERENCE "LEGACY")
+-find_package(OpenGL REQUIRED)
++if (SLIC3R_GUI)
++    set(OpenGL_GL_PREFERENCE "LEGACY")
++    find_package(OpenGL REQUIRED)
++endif ()
+ 
+ # Find glew or use bundled version
+ if (SLIC3R_STATIC AND NOT SLIC3R_STATIC_EXCLUDE_GLEW)
+@@ -481,7 +483,11 @@ if (SLIC3R_STATIC AND NOT SLIC3R_STATIC_EXCLUDE_GLEW)
+     set(GLEW_VERBOSE ON)
+ endif()
+ 
+-find_package(GLEW REQUIRED)
++if (SLIC3R_GUI)
++
++    find_package(GLEW REQUIRED)
++
++endif ()
+ 
+ # Find the Cereal serialization library
+ find_package(cereal REQUIRED)
+diff --git a/cmake/modules/FindOpenVDB.cmake b/cmake/modules/FindOpenVDB.cmake
+index 4fde5fa..8bf0152 100644
+--- a/cmake/modules/FindOpenVDB.cmake
++++ b/cmake/modules/FindOpenVDB.cmake
+@@ -351,6 +351,14 @@ find_package(IlmBase QUIET)
+ if(NOT IlmBase_FOUND)
+   pkg_check_modules(IlmBase QUIET IlmBase)
+ endif()
++if (NOT IlmBase_FOUND)
++  find_package(Imath QUIET)
++  if (Imath_FOUND AND TARGET Imath::Imath)
++    add_library(IlmBase::Half INTERFACE IMPORTED)
++    target_link_libraries(IlmBase::Half INTERFACE Imath::Imath)
++    set(IlmBase_FOUND TRUE)
++  endif()
++endif()
+ if (IlmBase_FOUND AND NOT TARGET IlmBase::Half)
+   message(STATUS "Falling back to IlmBase found by pkg-config...")
+ 
+diff --git a/src/occt_wrapper/CMakeLists.txt b/src/occt_wrapper/CMakeLists.txt
+index f6df6e7..445a050 100644
+--- a/src/occt_wrapper/CMakeLists.txt
++++ b/src/occt_wrapper/CMakeLists.txt
+@@ -19,7 +19,7 @@ include(GenerateExportHeader)
+ 
+ generate_export_header(OCCTWrapper)
+ 
+-find_package(OpenCASCADE 7.6.1 REQUIRED)
++find_package(OpenCASCADE REQUIRED)
+ 
+ set(OCCT_LIBS
+     TKXDESTEP

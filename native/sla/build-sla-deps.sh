@@ -62,6 +62,7 @@ build_openvdb(){ cmake_build openvdb "$(unpack "$(fetch openvdb https://github.c
 build_imath()  { cmake_build imath "$(unpack "$(fetch imath https://github.com/AcademySoftwareFoundation/Imath/archive/refs/tags/v3.1.9.tar.gz)" imath)" -DIMATH_BUILD_TESTS=OFF -DIMATH_BUILD_EXAMPLES=OFF -DIMATH_INSTALL_PKG_CONFIG=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_LIBDIR=lib; }
 build_qhull()  { cmake_build qhull "$(unpack "$(fetch qhull http://www.qhull.org/download/qhull-2020-src-8.0.2.tgz)" qhull)" -DINCLUDE_INSTALL_DIR="$ORCAMICRO_PREFIX/include" -DLIB_INSTALL_DIR="$ORCAMICRO_PREFIX/lib" -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_LIBDIR=lib; }
 build_libbgcode(){ cmake_build libbgcode "$(unpack "$(fetch libbgcode https://github.com/prusa3d/libbgcode/archive/b5c57c423c958a78dacae468aeee63ab3d2de947.zip)" libbgcode)" -DLibBGCode_BUILD_TESTS=OFF -DLibBGCode_BUILD_CMD_TOOL=OFF -DLibBGCode_BUILD_SHARED=OFF -DLibBGCode_BUILD_STATIC=ON -DCMAKE_INSTALL_LIBDIR=lib; }
+build_blosc()  { cmake_build blosc "$(unpack "$(fetch blosc https://github.com/Blosc/c-blosc/archive/refs/tags/v1.21.5.tar.gz)" blosc)" -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DBUILD_SHARED=OFF -DBUILD_STATIC=ON -DPREFER_EXTERNAL_ZLIB=ON -DCMAKE_INSTALL_LIBDIR=lib; }
 apply_patches() { local src=$1; shift; for p in "$@"; do log "Patching with $(basename "$p")"; patch -d "$src" -p1 --forward --ignore-whitespace --silent < "$p"; done; }
 build_occt() {
     local src; src=$(unpack "$(fetch occt https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/V7_6_0.zip)" occt)
@@ -82,7 +83,7 @@ build_occt() {
 }
 build_curl()   { local s; s=$(unpack "$(fetch curl https://curl.se/download/curl-8.6.0.tar.gz)" curl); ( cd "$s"; autotools_env; ./configure --host=aarch64-linux-android --prefix="$ORCAMICRO_PREFIX" --disable-shared --enable-static --without-ssl --without-libidn2 --without-zstd --without-brotli --without-libpsl --without-nghttp2 --disable-ldap --disable-threaded-resolver --with-zlib="$ORCAMICRO_PREFIX"; make -j "$JOBS"; make install ); rm -rf "$s"; }
 
-ALL=(eigen expat png jpeg freetype boost tbb gmp mpfr cgal cereal nlopt curl imath qhull libbgcode openvdb occt)
+ALL=(eigen expat png jpeg freetype boost tbb gmp mpfr cgal cereal nlopt curl imath qhull libbgcode blosc openvdb occt)
 run() { local n=$1 stamp="$ORCAMICRO_PREFIX/.stamps/sla-$1"
     local key; key=$({ declare -f "build_$n"; cat "$TOOLCHAIN_FILE"; } | sha256sum | cut -c1-16)
     [ "$(cat "$stamp" 2>/dev/null || true)" = "$key" ] && { log "$n: up to date"; return; }
