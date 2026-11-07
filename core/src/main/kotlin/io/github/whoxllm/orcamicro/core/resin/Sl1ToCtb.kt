@@ -42,7 +42,8 @@ object Sl1ToCtb {
                     if (width == 0) { width = img.width; height = img.height }
                     // engine grayscale 0..255 → CTB 0..127
                     val mask = ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }
-                    named += e.name to CtbWriter.encodeRle7(mask)   // small blob; mask is freed next iteration
+                    val aa = AntiAliaser.apply(mask, img.width, img.height, settings.antiAliasLevels)
+                    named += e.name to CtbWriter.encodeRle7(aa)   // small blob; mask is freed next iteration
                 }
                 zip.closeEntry()
                 e = zip.nextEntry
