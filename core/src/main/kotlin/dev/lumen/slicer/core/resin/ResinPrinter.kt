@@ -40,13 +40,17 @@ data class ResinPrinter(
          * spec before trusting build dimensions; full profiles replace this later.
          */
         val builtIn: List<ResinPrinter> = listOf(
+            // Anycubic first: these are the machines this project is actually developed against.
+            // Resolution x pixel pitch reproduces the published build volume exactly for both
+            // (see ResinPrinterTest) -- which is the only way to catch a marketing "34.45 um".
+            ResinPrinter("Anycubic Photon Mono X", 3840, 2400, 50.0, 245.0),
+            ResinPrinter("Anycubic Photon Mono X 6K", 5760, 3600, 34.0, 245.0),
+            ResinPrinter("Anycubic Photon Mono 4K", 3840, 2400, 34.5, 165.0),
             ResinPrinter("Elegoo Saturn 2 (8K)", 7680, 4320, 28.5, 250.0),
             ResinPrinter("Elegoo Saturn (4K)", 3840, 2400, 50.0, 200.0),
             ResinPrinter("Elegoo Saturn S (4K)", 4098, 2560, 48.0, 210.0),
             ResinPrinter("Elegoo Saturn 3 (12K)", 11520, 5120, 19.0, 260.0),
             ResinPrinter("Elegoo Mars 3 (4K)", 4098, 2560, 35.0, 175.0),
-            ResinPrinter("Anycubic Photon Mono X 6K", 5760, 3600, 34.45, 245.0),
-            ResinPrinter("Anycubic Photon Mono 4K", 3840, 2400, 34.5, 165.0),
             ResinPrinter("Phrozen Sonic Mini 8K", 7500, 4623, 22.0, 180.0),
             ResinPrinter("Generic 4K (4098×2560, 35 µm)", 4098, 2560, 35.0, 200.0),
         )

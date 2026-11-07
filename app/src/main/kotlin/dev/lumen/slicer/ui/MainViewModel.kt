@@ -94,7 +94,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     technology = technology,
                     edits = if (firstRun) PresetEdits() else saved.edits,
                     resinPrinter = ResinPrinter.byName(saved.resinPrinterName)
-                        ?: ResinPrinter.byName("Elegoo Saturn (4K)") ?: ResinPrinter.builtIn.first(),
+                        ?: ResinPrinter.byName("Anycubic Photon Mono X 6K") ?: ResinPrinter.builtIn.first(),
                     resinSettings = saved.resinSettings ?: ResinSettings(),
                     screen = startScreen(technology),
                 )
