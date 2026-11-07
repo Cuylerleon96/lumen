@@ -1,0 +1,28 @@
+{"rea_progress":{"phase":"analyze_javascript_application","completed":0,"total":1,"message":"Inventorying and parsing application artifacts","sequence":1}}
+{"rea_progress":{"phase":"read_javascript_artifacts","completed":0,"total":1,"message":"Reading inventoried JavaScript application sources","sequence":2}}
+{"rea_progress":{"phase":"parse_javascript_sources","completed":0,"total":1,"message":"Processing 62 selected application files","sequence":3}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/dialogModal.html (1/62)","sequence":4}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/index3D.html (2/62)","sequence":5}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexCLI.html (3/62)","sequence":6}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexFile.html (4/62)","sequence":7}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexLibraryOffline.html (5/62)","sequence":8}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexLysToLyl.html (6/62)","sequence":9}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexPreview3D.html (7/62)","sequence":10}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexProcessManager.html (8/62)","sequence":11}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexTester.html (9/62)","sequence":12}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexThemeEditor.html (10/62)","sequence":13}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/indexUI.html (11/62)","sequence":14}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/landing.html (12/62)","sequence":15}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/layout.LibraryManager.json (13/62)","sequence":16}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/layout.LycheeCLI.json (14/62)","sequence":17}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/layout.LycheeSlicer.json (15/62)","sequence":18}}
+{"rea_progress":{"phase":"process_javascript_artifact_metadata","completed":0,"total":1,"message":"Processing metadata for bin/layout.LycheeViewer.json (16/62)","sequence":19}}
+{"rea_progress":{"phase":"parse_javascript_source","completed":0,"total":1,"message":"Parsing and projecting bin/preloadLib.js (17/62)","sequence":20}}
+{"rea_progress":{"phase":"javascript_worker_parse","completed":0,"total":1,"message":"JavaScript worker parse: bin/preloadLib.js","sequence":21}}
+{"rea_progress":{"phase":"javascript_worker_static","completed":0,"total":1,"message":"JavaScript worker static: bin/preloadLib.js","sequence":22}}
+{"rea_progress":{"phase":"javascript_worker_semantic","completed":0,"total":1,"message":"JavaScript worker semantic: bin/preloadLib.js","sequence":23}}
+{"rea_progress":{"phase":"javascript_worker_projection","completed":0,"total":1,"message":"JavaScript worker projection: bin/preloadLib.js","sequence":24}}
+{"rea_progress":{"phase":"javascript_worker_transfer","completed":0,"total":1,"message":"JavaScript worker transfer: bin/preloadLib.js","sequence":25}}
+{"rea_progress":{"phase":"parse_javascript_source","completed":0,"total":1,"message":"Parsing and projecting bin/render3D.js (18/62)","sequence":26}}
+{"rea_progress":{"phase":"javascript_worker_parse","completed":0,"total":1,"message":"JavaScript worker parse: bin/render3D.js","sequence":27}}
+{"rea_progress":{"phase":"javascript_worker_static","completed":0,"total":1,"message":"JavaScript worker static: bin/render3D.js","sequence":28}}
