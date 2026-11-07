@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.whoxllm.orcamicro.core.Technology
 import io.github.whoxllm.orcamicro.core.gcode.GcodeParser
 import io.github.whoxllm.orcamicro.core.mesh.Mesh
+import io.github.whoxllm.orcamicro.core.mesh.CalibrationModels
 import io.github.whoxllm.orcamicro.core.mesh.ObjReader
 import io.github.whoxllm.orcamicro.core.mesh.Placement
 import io.github.whoxllm.orcamicro.core.mesh.StlFormatException
@@ -131,6 +132,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }.getOrElse { showMessage("Import failed: ${it.message}"); false }
             if (ok) load()
         }
+    }
+
+    // ---- calibration (L) -----------------------------------------------------------------
+
+    /** Load a calibration/test model — a step bar to verify resin exposure + dimensional accuracy. */
+    fun loadCalibrationModel() {
+        setModel("calibration.stl", CalibrationModels.stepBar(), centeredPlacement())
+        showMessage("Calibration step bar loaded")
     }
 
     private suspend fun restoreModel(saved: SavedState) {

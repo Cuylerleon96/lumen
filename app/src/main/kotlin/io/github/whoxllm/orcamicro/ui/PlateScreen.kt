@@ -115,6 +115,8 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
                     Text("Open an STL file to start", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { openModel.launch(arrayOf("*/*")) }) { Text("Open STL") }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { viewModel.loadCalibrationModel() }) { Text("Load calibration model") }
                 }
             }
         } else {
