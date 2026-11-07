@@ -40,7 +40,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 ## B. Shared model I/O & prep
 - ✅ **Load STL**, place, move/rotate/scale (FDM `PlacementSheet`).
 - ✅ Fit-check against build volume.
-- 📋 **Import OBJ, 3MF, STEP, AMF** (Lychee reads all; we read STL only).
+- 📋 **Import OBJ, 3MF, STEP, AMF** (Lychee reads all; we read STL only). — **✅ OBJ + 3MF done**
+  (`ObjReader`, `ThreeMfReader`, wired into the loader, normalized to STL); STEP/AMF still todo.
 - 📋 **Mirror**, **Array/duplicate**, **"align to face"/lay-flat**, **planar cut**, **boolean CSG**.
   — **✅ Mirror X/Y/Z done** (Placement + sheet).
 - 📋 **Measure / dimension / text** tools.
@@ -86,7 +87,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 🔜 **Drain holes** (place/drill, diameter/depth) + **hollow blockers** tab.
 - 📋 **Voxel pocket detection** (min pocket side/voxels, remove-below-holes, without-holes) · infill lattice · fill-holes · editable hollow voxels (tube brush).
 ### D.5 Anti-aliasing & masks
-- 📋 **Anti-aliasing** (grayscale edge levels / SSAA) in the writer.
+- 🚧 **Anti-aliasing** (grayscale edge levels) — `AntiAliaser` edge-softening pass applied in the
+  SL1→CTB path (AA-levels setting); full 3D SSAA would need higher-res engine output. Masks still todo.
 - 💤 Masks (mask PNG composited per border rules: mode/outset/slice).
 ### D.6 Detection & repair
 - 🔜 **Island detection** (per-layer unsupported-region scan) — reliability.
