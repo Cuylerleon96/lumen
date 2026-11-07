@@ -1,5 +1,9 @@
 # Target architecture v2 — one app, pluggable engines
 
+## Principles
+- **Everything free and unlocked** — no feature gating, no "pro" tiers, no accounts, no cloud.
+- Fully on-device/offline; one app covering FDM + resin + experimental slicing.
+
 ## Layers
 ```
 ┌─ :app  (Android) ───────────────────────────────────────────────────────────┐

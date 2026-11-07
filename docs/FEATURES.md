@@ -113,6 +113,13 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 - 📋 **Text/emboss**: tap-place + on-screen keyboard + sliders · **on-screen numeric keypad** for all fields.
 - 📋 **Haptics** (place/delete/invalid) · **two-handed / left-handed** layout options.
 
+## I. Cut & assembly (sectioning) — design: `docs/cut-tools.md`
+- 📋 **Planar cut**: plane position (mm) + XYZ angles + draggable handle; into objects / into parts; keep upper/lower/both; watertight caps; grid/multi-cut.
+- 📋 **Connectors / Assembly Keys** (pro): types **Plug / Dowel / Snap**; shapes round/dovetail/square/triangle; size + **tolerance (glue gap)** + depth + angle.
+- 📋 **Placeable tabs**: auto-distribute by count **and** manual add/move/delete/select-all on the cut plane; overlap detection.
+- 📋 **Split to objects/parts** · **auto-split to fit build volume** · hollowing-aware cut + pocket detection.
+- 📋 **Touch**: tap-to-add connector (loupe), drag to move, tap→params sheet, distribute-N, ghost preview, numeric keypad.
+
 ---
 
 ### How to use this file
