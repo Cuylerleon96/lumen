@@ -62,10 +62,11 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 Bottom-layer taper (`burnLayerDecreasing`); grey-level compensation (`*Compensation`/`GreyValue`); PWM.
 - 💤 **TSMC two-stage motion**; **tilt/vat-printer motion** (tiltUp/Down cycles/delays/speeds).
 ### D.3 Supports
-- 🔜 **Auto-supports** (from the SLA engine) — island/overhang-driven tree supports.
-- 📋 **Manual support editing** (place/move/delete, tips/base sizes, drill-down).
+- 🔜 **Auto-supports** (from the SLA engine) — island/overhang-driven, **load/peel-aware** tree supports.
+- 📋 **Manual support editing**: place/move/delete · **struts** (point-to-point) · contact/strut **shapes** · advanced segment editing (Lychee) · **proximity checker**.
 - 📋 **Support painting** (brush: light/medium/heavy tags, "no-support" faces).
-- 📋 Support params: tip/base diameter, density, angle, contact depth, bracing, **presets**.
+- 📋 **Full param set** (PrusaSlicer SLA): pillar Ø/widening/connection · base Ø/height/safety · head front/penetration/width · object elevation/critical angle/max weight · point density/min-distance · enforcers · tree type/angle/branch/tip · **anchor + border-anchor distance**, **merge level**, **lattice XY/Z**, **intersection avoidance**.
+- 📋 **Orientation strategies** (min-support / min-contacts / min-projection / face-up-down) — HeyGears-style (`docs/research/heygears-support.md`).
 - 💤 Mini-supports; accordion supports.
 ### D.4 Hollowing & drainage
 - 🔜 **Hollowing** (wall thickness, closing distance) via OpenVDB.
@@ -85,9 +86,11 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 **GOO** (chunked RLE + inverted checksum).
 - 💤 PW0/PWS/PWMA/PWMS, PHOTON(S), CBDDLP, NANODLP, ZCODE, CXDLP, LGS.
 
-## E. Profiles & libraries (resin-specific)
-- 📋 **Resin profile DB** (exposures per resin) + import/export.
+## E. Profiles & libraries
+- ✅ **FDM profiles (rich, bundled from Orca):** ~1,545 machine (printer **+ nozzle variants**) · ~7,053 filament · ~3,341 process.
+- 📋 **Resin profile DB** (exposures per resin) + import/export — we only have 6 stubs.
 - 📋 **Resin printer DB** (LCD res, pixel pitch, motion caps) — beyond 6 stubs.
+- 📋 **Strategy layer** (goal + material + printer → parameters; HeyGears-style) + per-resin calibrated defaults.
 - 📋 Support presets; printer discovery/connection.
 
 ## F. Project & platform
