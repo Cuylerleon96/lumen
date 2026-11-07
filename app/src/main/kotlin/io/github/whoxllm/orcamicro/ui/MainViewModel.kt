@@ -16,9 +16,12 @@ import io.github.whoxllm.orcamicro.core.profiles.PresetRef
 import io.github.whoxllm.orcamicro.core.profiles.PresetType
 import io.github.whoxllm.orcamicro.core.profiles.first
 import io.github.whoxllm.orcamicro.core.resin.MeshRasterizer
+import io.github.whoxllm.orcamicro.core.resin.ResinBackend
 import io.github.whoxllm.orcamicro.core.resin.ResinPrinter
 import io.github.whoxllm.orcamicro.core.resin.ResinSettings
+import io.github.whoxllm.orcamicro.core.resin.ResinSliceRequest
 import io.github.whoxllm.orcamicro.core.resin.Sl1Writer
+import io.github.whoxllm.orcamicro.core.slicing.SliceOutcome
 import io.github.whoxllm.orcamicro.core.settings.BedShape
 import io.github.whoxllm.orcamicro.core.settings.PresetEdits
 import io.github.whoxllm.orcamicro.core.slicing.EngineResponse
@@ -432,9 +435,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Naive resin slice: rasterizes the placed model layer by layer into an SL1 archive using the
-     * built-in rasterizer. (The PrusaSlicer SLA engine replaces this once grafted in — supports,
-     * hollowing and anti-aliasing come with it.)
+     * Resin (MSLA) slice. Routes through [ResinBackend], which prefers the native PrusaSlicer SLA
+     * engine (supports + hollowing + rasterize → SL1) and falls back to the naive rasterizer when the
+     * native library is unavailable.
      */
     fun sliceResin() {
         val state = _state.value
@@ -443,16 +446,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val settings = state.resinSettings
         if (state.resinSlice is SliceState.Running) return
         viewModelScope.launch {
-            _state.update { it.copy(resinSlice = SliceState.Running(0, "Rasterizing")) }
+            _state.update { it.copy(resinSlice = SliceState.Running(0, "Slicing")) }
             try {
                 val out = withContext(Dispatchers.Default) {
                     val base = model.name.substringBeforeLast('.').ifBlank { "print" }
                     val file = File(app.cacheDir, "$base.sl1")
-                    val count = MeshRasterizer.layerCount(model.placed, settings)
+                    val request = ResinSliceRequest(model.placed, printer, settings, base)
                     file.outputStream().use { stream ->
-                        Sl1Writer.write(stream, base, printer, settings, count) { i ->
-                            _state.update { it.copy(resinSlice = SliceState.Running((i + 1) * 100 / count, "Rasterizing")) }
-                            MeshRasterizer.rasterizeLayer(model.placed, printer, settings, i)
+                        val outcome = ResinBackend.slice(stream, request) { percent, text ->
+                            _state.update { it.copy(resinSlice = SliceState.Running(percent, text)) }
+                        }
+                        (outcome as? SliceOutcome.Layers)?.warnings?.takeIf { it.isNotEmpty() }?.let {
+                            throw IllegalStateException(it.joinToString("; "))
                         }
                     }
                     file
