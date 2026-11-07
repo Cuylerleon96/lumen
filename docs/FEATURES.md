@@ -105,7 +105,17 @@ independent CTB validator)._
 - ✅ Themed (dark-first `AppTheme` per `docs/design-language.md`).
 - ✅ **In-app update system** (About → Check for updates; `server/` publishes from the build host).
 - 🔜 **FDM-side "switch slicer"** entry (only resin has it today).
-- 📋 Undo/redo across edits; multi-model plate (multiple objects on one plate).
+- 📋 Undo/redo across edits; **multi-model plate (multiple objects on one plate)** — requested by Cuyler
+  2026-11-07, "with per model settings". Plan: `UiState.models: List<ModelState>` + a selected id; the
+  renderer draws one buffer per model (it already uploads per mesh); picking returns the NEAREST model
+  hit, so a tap selects the one under the finger; the placement sheet then edits the selected model
+  (position/rotate/scale/mirror/lay-flat already per model); arrange runs with N footprints and reports
+  what did not fit. **Slicing needs no engine change**: merge the placed meshes into one STL — the engine
+  already slices one object with several islands. **Per-model PRINT settings** (infill/layer
+  height/supports per object) are a different, deeper axis: they need the engine to receive
+  multi-object metadata (3MF with per-object config), not a merged mesh — scope still open.
+- 🔜 **Transparent transform sheet** (Cuyler 2026-11-07): the placement sheet must not hide the plate —
+  you judge a rotation by watching the model, so drop the modal scrim and make the sheet translucent.
 - 📋 Onboarding / first-run tips; units + language settings (i18n).
 - 💤 Theme editor, splash, print history screen.
 
@@ -133,7 +143,7 @@ independent CTB validator)._
   is the stock OrcaSlicer intro/prime extrusion, drawn green as `Custom`. Not yet reproduced on the
   reporter's own model — see the handoff's Open item 1.
 - ✅ Tree/normal supports, brim, spiral vase (engine features).
-- 📋 G-code post-processing scripts; per-object settings; calibration wizards (flow/PA/temp).
+- 📋 G-code post-processing scripts; per-object settings (see section A — the multi-model plate); calibration wizards (flow/PA/temp).
   — **✅ calibration towers + the G-code ramp** (`CalibrationModels.fdmTower` + `GcodeCalibration`:
   temperature / flow / pressure-advance per segment). The in-app wizard UI is still todo.
 - 📋 Network print: Moonraker/Klipper, OctoPrint, PrusaLink, Bambu LAN/dev. — **✅ Moonraker /
@@ -313,7 +323,9 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 ## P. Power-user workflow & polish — design: `docs/research/complete-feature-surface.md`
 - 📋 **Preset management**: save/load/import/export · inheritance · **compare presets** · dependencies · compatible printers/materials.
 - 📋 **Physical printer management** + device/network send.
-- 📋 **Project files** (save scene) · **multi-plate** · **per-object settings**.
+- 📋 **Project files** (save scene) · **multi-plate** · **per-object settings** — the per-object half is
+  the "per model settings" request (see section A): placement-level overrides come with the multi-model
+  plate; per-object PRINT settings wait on multi-object engine support.
 - 📋 **Undo/redo** · **autosave + crash recovery** · **print history** · **user backups**.
 - 📋 **Batch** process scene · batch convert · file queue.
 - 📋 **G-code console + preview** (layer slider, toolpath/speed/flow views).

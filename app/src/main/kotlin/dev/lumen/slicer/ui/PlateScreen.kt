@@ -46,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.lumen.slicer.core.mesh.Placement
@@ -208,7 +209,16 @@ fun PlacementSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val p = model.placement
     val bed = plateBed ?: state.bed
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        // The sheet must not hide the thing it edits: you judge a rotation by WATCHING the model turn,
+        // so the modal scrim goes and the container is translucent — the plate stays visible above and
+        // behind it. Cuyler's request: "the orientation tab should be partially transparent so you can
+        // see how it's rotating".
+        scrimColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+    ) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
