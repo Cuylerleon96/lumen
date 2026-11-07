@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -206,6 +207,12 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
             IntField("Anti-aliasing levels", s.antiAliasLevels) { viewModel.setResinSettings(s.copy(antiAliasLevels = it)) }
             NumField("Resin density (g/ml)", s.materialDensityGPerMl) { viewModel.setResinSettings(s.copy(materialDensityGPerMl = it)) }
             NumField("Resin price / kg", s.pricePerKg) { viewModel.setResinSettings(s.copy(pricePerKg = it)) }
+            HorizontalDivider()
+            SwitchRow("Hollow the model", s.hollowing) { viewModel.setResinSettings(s.copy(hollowing = it)) }
+            if (s.hollowing) {
+                NumField("Wall thickness (mm)", s.wallThicknessMm) { viewModel.setResinSettings(s.copy(wallThicknessMm = it)) }
+                NumField("Closing distance (mm)", s.hollowingClosingDistanceMm) { viewModel.setResinSettings(s.copy(hollowingClosingDistanceMm = it)) }
+            }
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -295,6 +302,14 @@ private fun IntField(label: String, value: Int, onChange: (Int) -> Unit) {
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
 }
 
 /** Formats a duration in seconds as e.g. "1h 23m" / "45m" / "12s". */

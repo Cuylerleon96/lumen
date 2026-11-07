@@ -31,6 +31,14 @@ data class ResinSettings(
     /** Resin price per kilogram — for the cost estimate (0 = unknown). */
     val pricePerKg: Double = 0.0,
 
+    // ---- Hollowing (D.4) ----
+    /** Hollow the model (saves resin + reduces peel force). */
+    val hollowing: Boolean = false,
+    /** Shell wall thickness in mm. */
+    val wallThicknessMm: Double = 2.0,
+    /** Voxel closing distance in mm (fills thin features so the shell stays connected). */
+    val hollowingClosingDistanceMm: Double = 0.5,
+
     // ---- Motion (Z) ----
     /** Z distance lifted off the film to peel, in mm. */
     val liftDistanceMm: Double = 5.0,
@@ -78,6 +86,9 @@ data class ResinSettings(
         append(",\"exposure_time\":\"$exposureSec\"")
         append(",\"initial_exposure_time\":\"$bottomExposureSec\"")
         append(",\"faded_layers\":\"$transitionLayers\"")
+        append(",\"hollowing_enable\":\"${if (hollowing) 1 else 0}\"")
+        append(",\"hollowing_min_thickness\":\"$wallThicknessMm\"")
+        append(",\"hollowing_closing_distance\":\"$hollowingClosingDistanceMm\"")
         append('}')
     }
 
