@@ -39,14 +39,18 @@ object Sl1ToCtb {
                     val baos = ByteArrayOutputStream()
                     zip.copyTo(baos)
                     val img = PngDecoder.decode(baos.toByteArray())
-                    if (width == 0) { width = img.width; height = img.height }
+                    // The engine emits its raster TRANSPOSED relative to the panel (see RasterOrient for
+                    // the measurement): rotate it into the panel's orientation and declare the panel's
+                    // own dims in the header, or the printer renders the print a quarter turn round.
+                    val oriented = RasterOrient.forPanel(img.gray, img.width, img.height, printer)
+                    if (width == 0) { width = oriented.width; height = oriented.height }
                     // engine grayscale 0..255 → CTB 0..127
-                    var mask = ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }
+                    var mask = ByteArray(oriented.gray.size) { ((oriented.gray[it].toInt() and 0xFF) shr 1).toByte() }
                     if (settings.repairLayers) {
-                        mask = LayerRepair.removeSpecks(mask, img.width, img.height, settings.minSpeckPixels)
-                        mask = LayerRepair.fillHoles(mask, img.width, img.height)
+                        mask = LayerRepair.removeSpecks(mask, oriented.width, oriented.height, settings.minSpeckPixels)
+                        mask = LayerRepair.fillHoles(mask, oriented.width, oriented.height)
                     }
-                    val aa = AntiAliaser.apply(mask, img.width, img.height, settings.antiAliasLevels)
+                    val aa = AntiAliaser.apply(mask, oriented.width, oriented.height, settings.antiAliasLevels)
                     named += e.name to CtbWriter.encodeRle7(aa)   // small blob; mask is freed next iteration
                 }
                 zip.closeEntry()

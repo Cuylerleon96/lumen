@@ -66,9 +66,14 @@ object Sl1ToPw {
                     zip.copyTo(baos)
                     val bytes = baos.toByteArray()
                     if (width == 0) {
-                        val img = PngDecoder.decode(bytes)
-                        width = img.width
-                        height = img.height
+                        // The engine's raster is transposed relative to the panel, so the CONTAINER has
+                        // to declare the panel's own geometry while the mask is rotated to match it.
+                        // Taking the PNG's dims as (resolutionX, resolutionY) is what shipped a print
+                        // rotated a quarter turn.
+                        val probe = PngDecoder.decode(bytes)
+                        val oriented = RasterOrient.forPanel(probe.gray, probe.width, probe.height, printer)
+                        width = oriented.width
+                        height = oriented.height
                     }
                     layerPngs += bytes
                 }
@@ -77,14 +82,6 @@ object Sl1ToPw {
             }
         }
         require(layerPngs.isNotEmpty()) { "SL1 contained no layer images" }
-
-        // The machine table describes the printer's real panel, and the raster has to match it or the
-        // printer would scale or crop the image. A mismatch means the engine sliced for a different
-        // panel -- i.e. display_pixels_x/y never reached it.
-        require(width == printer.resolutionX && height == printer.resolutionY) {
-            "SL1 raster ${width}x$height does not match ${printer.name} " +
-                "(${printer.resolutionX}x${printer.resolutionY}); the engine was sliced for another panel"
-        }
 
         val params = AnycubicPwWriter.Params(
             printerName = printer.name,
@@ -114,7 +111,7 @@ object Sl1ToPw {
         AnycubicPwWriter.write(
             out = out,
             layerCount = layerPngs.size,
-            maskAt = { i -> decodeRepaired(layerPngs[i], width, height, settings) },
+            maskAt = { i -> decodeRepaired(layerPngs[i], printer, settings) },
             params = params,
             version = version,
             codec = codecFor(extension),
@@ -122,12 +119,15 @@ object Sl1ToPw {
         )
     }
 
-    /** Decode one layer, apply the same repair the CTB path applies, and hand back an 8-bit mask. */
-    private fun decodeRepaired(png: ByteArray, width: Int, height: Int, settings: ResinSettings): ByteArray {
-        var mask = PngDecoder.decode(png).gray
+    /** Decode one layer, rotate it into the panel's orientation, apply the same repair the CTB path
+     *  applies, and hand back an 8-bit mask. */
+    private fun decodeRepaired(png: ByteArray, printer: ResinPrinter, settings: ResinSettings): ByteArray {
+        val img = PngDecoder.decode(png)
+        val oriented = RasterOrient.forPanel(img.gray, img.width, img.height, printer)
+        var mask = oriented.gray
         if (settings.repairLayers) {
-            mask = LayerRepair.removeSpecks(mask, width, height, settings.minSpeckPixels)
-            mask = LayerRepair.fillHoles(mask, width, height)
+            mask = LayerRepair.removeSpecks(mask, oriented.width, oriented.height, settings.minSpeckPixels)
+            mask = LayerRepair.fillHoles(mask, oriented.width, oriented.height)
         }
         return mask
     }

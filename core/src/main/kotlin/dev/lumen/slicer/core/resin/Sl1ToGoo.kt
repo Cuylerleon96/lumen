@@ -35,19 +35,23 @@ object Sl1ToGoo {
         }
         require(named.isNotEmpty()) { "SL1 contained no layer images" }
         val sorted = named.sortedBy { it.first }   // PrusaSlicer names layers <jobid><index>.png
-        val first = PngDecoder.decode(sorted[0].second)
-        val width = first.width
-        val height = first.height
-        val firstMask = ByteArray(first.gray.size) { ((first.gray[it].toInt() and 0xFF) shr 1).toByte() }
+        // The engine's raster is TRANSPOSED relative to the panel (see RasterOrient for the
+        // measurement), so both the mask and the declared dims have to be put in the panel's frame.
+        val firstImg = PngDecoder.decode(sorted[0].second)
+        val firstOriented = RasterOrient.forPanel(firstImg.gray, firstImg.width, firstImg.height, printer)
+        val width = firstOriented.width
+        val height = firstOriented.height
+        val firstMask = ByteArray(firstOriented.gray.size) { ((firstOriented.gray[it].toInt() and 0xFF) shr 1).toByte() }
 
         GooWriter.write(
             layerCount = sorted.size,
             maskAt = { i ->
                 val img = PngDecoder.decode(sorted[i].second)
-                var m = ByteArray(img.gray.size) { ((img.gray[it].toInt() and 0xFF) shr 1).toByte() }   // 0..255 → 0..127
+                val oriented = RasterOrient.forPanel(img.gray, img.width, img.height, printer)
+                var m = ByteArray(oriented.gray.size) { ((oriented.gray[it].toInt() and 0xFF) shr 1).toByte() }   // 0..255 → 0..127
                 if (settings.repairLayers) {
-                    m = LayerRepair.removeSpecks(m, img.width, img.height, settings.minSpeckPixels)
-                    m = LayerRepair.fillHoles(m, img.width, img.height)
+                    m = LayerRepair.removeSpecks(m, oriented.width, oriented.height, settings.minSpeckPixels)
+                    m = LayerRepair.fillHoles(m, oriented.width, oriented.height)
                 }
                 m
             },

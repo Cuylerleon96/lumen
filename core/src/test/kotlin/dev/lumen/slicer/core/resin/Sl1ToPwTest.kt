@@ -97,7 +97,84 @@ class Sl1ToPwTest {
         }
     }
 
+    @Test
+    fun `the engine's transposed raster is rotated into the panel's frame, not refused`() {
+        // On a NON-square panel the two frames are distinguishable, so this is the test that would
+        // have caught the transpose bug: the fixture is the engine's own layout (panel Y x panel X).
+        val wide = ResinPrinter("Tiny 32x16 panel", 32, 16, 50.0, 20.0)
+
+        val fromEngine = sl1From(wide, wide.resolutionY, wide.resolutionX, listOf(engineMask(wide)))
+        val fromPanel = sl1From(wide, wide.resolutionX, wide.resolutionY, listOf(panelMask(wide)))
+
+        val a = ByteArrayOutputStream().also { Sl1ToPw.convert(fromEngine, ResinSettings(), wide, 10.0, 60, it, extension = "pwmx") }.toByteArray()
+        val b = ByteArrayOutputStream().also { Sl1ToPw.convert(fromPanel, ResinSettings(), wide, 10.0, 60, it, extension = "pwmx") }.toByteArray()
+
+        assertTrue(a.size > 200, "expected a real file, got ${a.size} bytes")
+        assertTrue(
+            a.contentEquals(b),
+            "the engine's raster and the same image in the panel's frame describe ONE print, so both " +
+                "must produce identical files (engine=${a.size}B, panel=${b.size}B)",
+        )
+    }
+
+    @Test
+    fun `the orientation is not a no-op — the counter-rotation gives a different file`() {
+        // Control for the test above: if the converter passed the raster through unrotated, the two
+        // files would differ, so equality there is evidence the rotation happened in the right sense.
+        val wide = ResinPrinter("Tiny 32x16 panel", 32, 16, 50.0, 20.0)
+        val engine = engineMask(wide)
+        val ccw = ByteArray(engine.size)
+        for (v in 0 until wide.resolutionX) {
+            for (u in 0 until wide.resolutionY) {
+                ccw[(wide.resolutionY - 1 - u) * wide.resolutionX + v] = engine[v * wide.resolutionY + u]
+            }
+        }
+        val good = sl1From(wide, wide.resolutionY, wide.resolutionX, listOf(engine))
+        val wrong = sl1From(wide, wide.resolutionX, wide.resolutionY, listOf(ccw))
+
+        val a = ByteArrayOutputStream().also { Sl1ToPw.convert(good, ResinSettings(), wide, 10.0, 60, it, extension = "pwmx") }.toByteArray()
+        val b = ByteArrayOutputStream().also { Sl1ToPw.convert(wrong, ResinSettings(), wide, 10.0, 60, it, extension = "pwmx") }.toByteArray()
+        assertFalse(a.contentEquals(b), "a counter-rotated mask must not produce the same layer data")
+    }
+
     // ---------------------------------------------------------------- fixtures
+
+    /** Ink as a function of the WORLD position, so both frames describe the same print. */
+    private fun ink(x: Int, y: Int): Byte = if ((x + 2 * y) % 7 < 3) 0xFF.toByte() else 0
+
+    /** A layer mask in the ENGINE's layout: width = panel Y, height = panel X, world X down-reversed. */
+    private fun engineMask(p: ResinPrinter): ByteArray =
+        ByteArray(p.resolutionX * p.resolutionY).also { out ->
+            for (v in 0 until p.resolutionX) {
+                for (u in 0 until p.resolutionY) out[v * p.resolutionY + u] = ink(p.resolutionX - 1 - v, u)
+            }
+        }
+
+    /** The same image in the PANEL's layout: row = world Y, col = world X. */
+    private fun panelMask(p: ResinPrinter): ByteArray =
+        ByteArray(p.resolutionX * p.resolutionY).also { out ->
+            for (y in 0 until p.resolutionY) {
+                for (x in 0 until p.resolutionX) out[y * p.resolutionX + x] = ink(x, y)
+            }
+        }
+
+    /** An SL1 whose layer PNGs have the given pixel dimensions (grayscale 8-bit). */
+    private fun sl1From(p: ResinPrinter, w: Int, h: Int, masks: List<ByteArray>): ByteArray {
+        val baos = ByteArrayOutputStream()
+        ZipOutputStream(baos).use { zip ->
+            masks.forEachIndexed { i, m ->
+                zip.putNextEntry(ZipEntry(String.format("%08d.png", i)))
+                val img = BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY)
+                img.raster.setPixels(0, 0, w, h, IntArray(m.size) { m[it].toInt() and 0xFF })
+                ImageIO.write(img, "png", zip)
+                zip.closeEntry()
+            }
+            zip.putNextEntry(ZipEntry("config.ini"))
+            zip.write("layerHeight = 0.05\nexpTime = 2.5\n".toByteArray())
+            zip.closeEntry()
+        }
+        return baos.toByteArray()
+    }
 
     /** A layer mask with a band of [on] in the top half and [off] below. */
     private fun mask(p: ResinPrinter, on: Int, off: Int): ByteArray =
@@ -108,8 +185,11 @@ class Sl1ToPwTest {
         ZipOutputStream(baos).use { zip ->
             masks.forEachIndexed { i, m ->
                 zip.putNextEntry(ZipEntry(String.format("%08d.png", i)))
-                val img = BufferedImage(p.resolutionX, p.resolutionY, BufferedImage.TYPE_BYTE_GRAY)
-                img.raster.setPixels(0, 0, p.resolutionX, p.resolutionY, IntArray(m.size) { m[it].toInt() and 0xFF })
+                // What the engine ACTUALLY emits: the PNG is panel Y x panel X (transposed). A fixture
+                // built the natural way round is what let the transpose bug through -- the fixture has
+                // to reproduce the engine's real output, not what we wish it were.
+                val img = BufferedImage(p.resolutionY, p.resolutionX, BufferedImage.TYPE_BYTE_GRAY)
+                img.raster.setPixels(0, 0, p.resolutionY, p.resolutionX, IntArray(m.size) { m[it].toInt() and 0xFF })
                 ImageIO.write(img, "png", zip)
                 zip.closeEntry()
             }
