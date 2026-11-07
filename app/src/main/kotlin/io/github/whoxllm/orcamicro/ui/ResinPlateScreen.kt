@@ -52,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.whoxllm.orcamicro.core.resin.ResinFormat
 import io.github.whoxllm.orcamicro.core.resin.ResinPrinter
 import io.github.whoxllm.orcamicro.core.resin.ResinProfile
 import io.github.whoxllm.orcamicro.core.settings.BedShape
