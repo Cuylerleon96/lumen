@@ -14,6 +14,9 @@ _Last updated: 2026-11-06 (initial full inventory)._
   (`docs/research/rea-lychee-notes.md`). QC pass #1: `docs/QC-REPORT.md`.
 - Still open (big): SLA engine graft (ADR 0003), supports, hollowing, AA, CTB/GOO, profiles,
   estimation, prep tools.
+- 2026-11-06 — **feature-discovery pass** (Orca/Prusa/Lychee/UVTools): added groups **K** (post-slice
+  analysis & repair), **L** (calibration); expanded supports/hollowing/FDM sets →
+  `docs/research/slicer-feature-discovery.md`. Standing practice: mine slicers at waiting points.
 
 ---
 
@@ -128,6 +131,15 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 - 📋 **Align selected / distribute / center** · **multi-select (marquee) group-transform**.
 - 📋 Support structures: FDM **brim** (width/type/ears/gap) · resin **pad/raft** (wall, slope, gap, around).
 - 📋 **Snapping** (grid/plate/objects/faces) + collision warnings · **touch gizmos** (fat handles) + numeric keypad.
+
+## K. Post-slice analysis & repair (UVTools-class) — design: `docs/research/slicer-feature-discovery.md`
+- 📋 **Issue detection**: islands · overhangs · **resin traps** · **suction cups** · touching bounds · print height · empty layers.
+- 📋 **Auto-repair**: remove islands ≤ N px · recursive island removal · attach islands down N layers · fill resin traps · ignore/delete per issue.
+- 📋 **Pixel editor** (paint/delete per layer, add drain holes) · **pixel dimming** · **morph** (erode/dilate) · **edit any parameter on a sliced file**.
+
+## L. Calibration & testing — design: `docs/research/slicer-feature-discovery.md`
+- 📋 FDM: temperature · flow rate · pressure advance · retraction · cornering towers · auto-calibration + guide.
+- 📋 Resin: **exposure test** plate · **XP/Cones** calibration artifacts (generated on-device).
 
 ---
 
