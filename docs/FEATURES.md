@@ -224,7 +224,15 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
   rotate/scale only (origin-centred SLA bed). **Mirror X/Y/Z** done.
 - 📋 **Auto-Drop** (drop to plate) · **Center on plate** · **place-on-face / lay-flat** · **auto-orient** (min overhang/support, deterministic).
 - 📋 **Scale** uniform/per-axis · % / mm · **fit-to-build-volume** · **Mirror X/Y/Z** · **Duplicate/array/clone**.
-- 📋 **Arrange / auto-arrange** (spacing, rotate-for-arrange, per-plate/all; warn on no-fit) + auto-arrange after clone.
+- 📋 **Arrange / auto-arrange** — fit multiple models on the plate without overlap — **and its
+  settings**: inter-object **spacing**, **rotate-for-arrange** (allowed rotations 0/90/180/270),
+  **allow mirroring**, algorithm (grid / spiral / nested), keep-grouped, **per-plate / all-plates**,
+  **multi-plate overflow**, warn on no-fit, and auto-arrange after clone.
+  Build it on the placement frame settled 2026-11-07: the engine's raster is **corner-origin** (world
+  (0,0)..(panelW, panelH)), so "on the plate" means the model's centre at half the panel. Arranging
+  against the wrong frame clips every object silently — that is exactly the bug that took three
+  attempts to fix. For resin, arranging is only half the job: each object also wants **auto-orient**
+  for supports, and the two interact because orientation changes the footprint.
 - 📋 **Align selected / distribute / center** · **multi-select (marquee) group-transform**.
 - 📋 Support structures: FDM **brim** (width/type/ears/gap) · resin **pad/raft** (wall, slope, gap, around).
 - 📋 **Snapping** (grid/plate/objects/faces) + collision warnings · **touch gizmos** (fat handles) + numeric keypad.
