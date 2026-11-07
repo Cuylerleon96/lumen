@@ -13,6 +13,7 @@ import io.github.whoxllm.orcamicro.core.mesh.Placement
 import io.github.whoxllm.orcamicro.core.mesh.StlFormatException
 import io.github.whoxllm.orcamicro.core.mesh.StlReader
 import io.github.whoxllm.orcamicro.core.mesh.StlWriter
+import io.github.whoxllm.orcamicro.core.mesh.ThreeMfReader
 import io.github.whoxllm.orcamicro.core.profiles.Catalog
 import io.github.whoxllm.orcamicro.core.profiles.PresetRef
 import io.github.whoxllm.orcamicro.core.profiles.PresetType
@@ -234,7 +235,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val bytes = app.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                         ?: throw StlFormatException("Could not open the file")
                     val name = displayName(uri)
-                    val mesh = if (name.endsWith(".obj", ignoreCase = true)) ObjReader.read(String(bytes)) else StlReader.read(bytes)
+                    val mesh = when {
+                        name.endsWith(".obj", ignoreCase = true) -> ObjReader.read(String(bytes))
+                        name.endsWith(".3mf", ignoreCase = true) -> ThreeMfReader.read(bytes)
+                        else -> StlReader.read(bytes)
+                    }
                     store.modelFile.outputStream().use { StlWriter.write(mesh, it) }   // normalize to STL for restore
                     name to mesh
                 }
