@@ -99,6 +99,20 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 iOS build (same engine, SwiftUI).
 - 📋 i18n/localization.
 
+## H. Touch interaction & input
+Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · stylus · per-tool mapping).
+- ✅ 3D nav: 1-finger orbit, 2-finger pan, pinch zoom (`SceneView`).
+- 📋 **Tool rail** (Navigate/Select/Move/Support/Paint/Hollow/Cut/Measure/Text) + active-tool state.
+- 📋 **Loupe** (magnifier) for placement/paint precision · **dual-finger offset cursor** · **nudge pad** (0.1/1 mm).
+- 📋 **Stylus**: hover preview, pressure = brush size, side button = erase, palm rejection.
+- 📋 **Long-press context menu** (right-click equiv) · **Undo/redo** top-bar buttons + 2-finger tap.
+- 📋 **Support tools**: tap-to-place + drag-a-row + snap; eraser brush; paint (light/med/heavy + no-support); select/trash.
+- 📋 **Masking**: paint brush · freehand lasso · box-select · fill/clear · mask-border sheet.
+- 📋 **Hollow** sheet + live preview · **drain holes** tap-to-place ⟂ surface, drag, select→diameter/depth.
+- 📋 **Cut**: draggable plane handle + rotate ring + keep top/bottom · **Measure**: 2-tap/face/3-tap.
+- 📋 **Text/emboss**: tap-place + on-screen keyboard + sliders · **on-screen numeric keypad** for all fields.
+- 📋 **Haptics** (place/delete/invalid) · **two-handed / left-handed** layout options.
+
 ---
 
 ### How to use this file
