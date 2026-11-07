@@ -4,7 +4,12 @@ import kotlinx.serialization.Serializable
 
 /**
  * Resin exposure and motion parameters. Mirrors the fields the SL1 `config.ini` carries,
- * plus the few extras (anti-aliasing) a masked-SLA slicer needs.
+ * plus the motion parameters (lift/retract/rest) that the CTB/GOO writers need and the
+ * few extras (anti-aliasing) a masked-SLA slicer needs.
+ *
+ * Motion is modelled per Lychee/Chitubox conventions: a layer cycle = expose -> rest (after
+ * print) -> lift (peel) -> rest (after lift) -> retract -> rest (after retract). Bottom layers
+ * use slower lift/retract speeds for adhesion.
  */
 @Serializable
 data class ResinSettings(
@@ -21,6 +26,26 @@ data class ResinSettings(
     val bottomLightOffSec: Double = 7.0,
     /** Anti-aliasing levels (1 = off). Higher = grayscale edge smoothing. */
     val antiAliasLevels: Int = 1,
+
+    // ---- Motion (Z) ----
+    /** Z distance lifted off the film to peel, in mm. */
+    val liftDistanceMm: Double = 5.0,
+    /** Z distance retracted back toward the film, in mm. */
+    val retractDistanceMm: Double = 5.0,
+    /** Lift (peel) speed for normal layers, mm/min. */
+    val liftSpeedMmPerMin: Double = 60.0,
+    /** Retract speed for normal layers, mm/min. */
+    val retractSpeedMmPerMin: Double = 150.0,
+    /** Lift speed for bottom layers, mm/min (slower for adhesion). */
+    val bottomLiftSpeedMmPerMin: Double = 30.0,
+    /** Retract speed for bottom layers, mm/min. */
+    val bottomRetractSpeedMmPerMin: Double = 60.0,
+    /** Rest after exposure, before lift (aka "wait after print"), seconds. */
+    val restBeforeLiftSec: Double = 0.0,
+    /** Rest at the top of the lift, before retract ("wait after lift"), seconds. */
+    val restAfterLiftSec: Double = 0.0,
+    /** Rest after retract, before the next exposure ("wait after retract"), seconds. */
+    val restAfterRetractSec: Double = 1.0,
 ) {
     /** Exposure for layer [index] (0-based), applying bottom layers then the fade ramp. */
     fun exposureFor(index: Int): Double {
@@ -31,5 +56,14 @@ data class ResinSettings(
             return bottomExposureSec + (exposureSec - bottomExposureSec) * t
         }
         return exposureSec
+    }
+
+    /** Seconds of Z motion + rest for one layer cycle (excludes exposure and light-off). */
+    fun motionTimeSec(bottom: Boolean): Double {
+        val lift = if (bottom) bottomLiftSpeedMmPerMin else liftSpeedMmPerMin
+        val retract = if (bottom) bottomRetractSpeedMmPerMin else retractSpeedMmPerMin
+        val liftSec = if (lift > 0) liftDistanceMm / lift * 60.0 else 0.0
+        val retractSec = if (retract > 0) retractDistanceMm / retract * 60.0 else 0.0
+        return restBeforeLiftSec + liftSec + restAfterLiftSec + retractSec + restAfterRetractSec
     }
 }

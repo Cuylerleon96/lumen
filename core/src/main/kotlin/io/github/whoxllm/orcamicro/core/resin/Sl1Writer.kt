@@ -44,8 +44,13 @@ object Sl1Writer {
         val slowLayers = minOf(s.bottomLayers, layerCount)
         val fadeLayers = minOf(s.transitionLayers, (layerCount - slowLayers).coerceAtLeast(0))
         val fastLayers = (layerCount - slowLayers - fadeLayers).coerceAtLeast(0)
-        val printTime = slowLayers * (s.bottomExposureSec + s.bottomLightOffSec) +
-            (layerCount - slowLayers) * (s.exposureSec + s.lightOffSec)
+        var printTime = 0.0
+        for (i in 0 until layerCount) {
+            val bottom = i < slowLayers
+            val exposure = if (bottom) s.bottomExposureSec else s.exposureSec
+            val lightOff = if (bottom) s.bottomLightOffSec else s.lightOffSec
+            printTime += exposure + lightOff + s.motionTimeSec(bottom)
+        }
         return buildString {
             line("action", "print")
             line("jobDir", project)
@@ -56,7 +61,7 @@ object Sl1Writer {
             line("numFade", fadeLayers)
             line("numFast", fastLayers)
             line("numSlow", slowLayers)
-            line("printTime", printTime)
+            line("printTime", printTime.toInt())
             line("printerModel", printer.name)
             line("printerProfile", printer.name)
             line("printerVariant", "default")

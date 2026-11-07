@@ -39,6 +39,20 @@ class Sl1WriterTest {
     }
 
     @Test
+    fun motionTimeUsesBottomSpeedsForBottomLayers() {
+        val s = ResinSettings(
+            liftDistanceMm = 6.0, retractDistanceMm = 6.0,
+            liftSpeedMmPerMin = 60.0, retractSpeedMmPerMin = 120.0,
+            bottomLiftSpeedMmPerMin = 30.0, bottomRetractSpeedMmPerMin = 60.0,
+            restBeforeLiftSec = 0.0, restAfterLiftSec = 0.0, restAfterRetractSec = 1.0,
+        )
+        // normal: 6/60*60 + 6/120*60 + 1 = 6 + 3 + 1 = 10
+        assertEquals(10.0, s.motionTimeSec(bottom = false), 1e-9)
+        // bottom: 6/30*60 + 6/60*60 + 1 = 12 + 6 + 1 = 19
+        assertEquals(19.0, s.motionTimeSec(bottom = true), 1e-9)
+    }
+
+    @Test
     fun exposureRampsFromBottomToNormal() {
         val s = ResinSettings(exposureSec = 2.0, bottomExposureSec = 20.0, bottomLayers = 2, transitionLayers = 4)
         assertEquals(20.0, s.exposureFor(0))
