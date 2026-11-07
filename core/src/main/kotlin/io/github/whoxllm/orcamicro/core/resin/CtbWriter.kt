@@ -226,22 +226,18 @@ object CtbWriter {
                 out.write(v)                    // MSB 0 → single pixel
             } else {
                 out.write(v or 0x80)            // MSB 1 → run follows
-                var r = run
-                // encode run length, big-endian, with the size prefix in the MSBs of the first byte
-                val bytes = ArrayList<Int>()
-                while (r > 0) { bytes.add(0, r and 0xFF); r = r ushr 8 }
-                // bytes is big-endian; pick a prefix so the declared width matches the byte count
-                when (bytes.size) {
-                    1 -> out.write(bytes[0] and 0x7F)               // 0b0xxxxxxx (7-bit)
-                    2 -> { out.write(0x80 or (bytes[0] and 0x3F)); out.write(bytes[1]) }   // 0b10xxxxxx
-                    3 -> { out.write(0xC0 or (bytes[0] and 0x1F)); out.write(bytes[1]); out.write(bytes[2]) } // 0b110xxxxx
+                // run length in the smallest big-endian form that fits (7/14/21/28-bit)
+                when {
+                    run < (1 shl 7) -> out.write(run and 0x7F)
+                    run < (1 shl 14) -> {
+                        out.write(0x80 or ((run shr 8) and 0x3F)); out.write(run and 0xFF)
+                    }
+                    run < (1 shl 21) -> {
+                        out.write(0xC0 or ((run shr 16) and 0x1F)); out.write((run shr 8) and 0xFF); out.write(run and 0xFF)
+                    }
                     else -> {
-                        val n = bytes.size
-                        val b0 = if (n >= 4) bytes[n - 4] else 0
-                        val b1 = if (n >= 4) bytes[n - 3] else 0
-                        val b2 = if (n >= 4) bytes[n - 2] else 0
-                        val b3 = if (n >= 4) bytes[n - 1] else 0
-                        out.write(0xE0 or (b0 and 0x0F)); out.write(b1); out.write(b2); out.write(b3)
+                        out.write(0xE0 or ((run shr 24) and 0x0F)); out.write((run shr 16) and 0xFF)
+                        out.write((run shr 8) and 0xFF); out.write(run and 0xFF)
                     }
                 }
             }
