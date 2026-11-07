@@ -15,6 +15,8 @@ class ResinSliceRequest(
     val printer: ResinPrinter,
     val settings: ResinSettings,
     override val outputName: String,
+    /** Writable dir for temp STL/SL1 files (the app's cacheDir); null -> system temp. */
+    val workDir: java.io.File? = null,
 ) : SliceRequest
 
 /**
@@ -58,19 +60,22 @@ object ResinBackend : SlicingBackend {
         out: OutputStream,
         onProgress: (percent: Int, text: String) -> Unit,
     ): SliceOutcome? {
-        val stl = File.createTempFile("mslice", ".stl")
-        val sl1 = File.createTempFile("mslice", ".sl1")
+        val stl = if (r.workDir != null) File.createTempFile("mslice", ".stl", r.workDir) else File.createTempFile("mslice", ".stl")
+        val sl1 = if (r.workDir != null) File.createTempFile("mslice", ".sl1", r.workDir) else File.createTempFile("mslice", ".sl1")
         try {
             onProgress(2, "Preparing mesh")
             stl.outputStream().use { StlWriter.write(r.mesh, it) }
+            println("ResinBackend: wrote STL ${stl.absolutePath} (${stl.length()} bytes)")
             onProgress(5, "Slicing (SLA engine)")
             val rc = SlaEngine.nativeSlice(stl.absolutePath, sl1.absolutePath, r.settings.toEngineJson())
+            println("ResinBackend: nativeSlice rc=$rc sl1Bytes=${sl1.length()}")
             if (rc != 0 || !sl1.exists() || sl1.length() == 0L) return null
             onProgress(95, "Writing archive")
             sl1.inputStream().use { it.copyTo(out) }
             onProgress(100, "Done")
             return SliceOutcome.Layers(r.outputName, MeshRasterizer.layerCount(r.mesh, r.settings))
         } catch (t: Throwable) {
+            println("ResinBackend: engine slice failed: $t")
             return null
         } finally {
             stl.delete(); sl1.delete()

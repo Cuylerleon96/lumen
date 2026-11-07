@@ -451,7 +451,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val out = withContext(Dispatchers.Default) {
                     val base = model.name.substringBeforeLast('.').ifBlank { "print" }
                     val file = File(app.cacheDir, "$base.sl1")
-                    val request = ResinSliceRequest(model.placed, printer, settings, base)
+                    val request = ResinSliceRequest(model.placed, printer, settings, base, app.cacheDir)
                     file.outputStream().use { stream ->
                         val outcome = ResinBackend.slice(stream, request) { percent, text ->
                             _state.update { it.copy(resinSlice = SliceState.Running(percent, text)) }
