@@ -81,6 +81,25 @@ class SettingsStore(context: Context) {
         return gotState
     }
 
+    // ---- model library (F): recently opened models, kept for one-tap re-open ----
+
+    private val libraryDir = File(dir, "library")
+
+    /** Copies [bytes] into the library under a timestamped name, prunes to the newest [keep]. */
+    fun addToLibrary(name: String, bytes: ByteArray, keep: Int = 12): File {
+        libraryDir.mkdirs()
+        val safe = name.replace(Regex("[^A-Za-z0-9._-]"), "_").take(48).ifBlank { "model" }
+        val f = File(libraryDir, "${System.currentTimeMillis()}_$safe")
+        f.writeBytes(bytes)
+        libraryDir.listFiles()?.sortedByDescending { it.name }?.drop(keep)?.forEach { it.delete() }
+        return f
+    }
+
+    /** Library files, newest first. The display name is the original name after the timestamp. */
+    fun libraryFiles(): List<File> = libraryDir.listFiles()?.sortedByDescending { it.name }?.toList() ?: emptyList()
+
+    fun displayName(file: File): String = file.name.substringAfter('_', file.name)
+
     private companion object {
         val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     }

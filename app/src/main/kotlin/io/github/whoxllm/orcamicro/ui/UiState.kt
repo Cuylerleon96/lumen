@@ -63,6 +63,8 @@ data class UiState(
     val resinSlice: SliceState = SliceState.Idle,
     /** The last resin slice written to disk, ready to save/share. */
     val resinOutput: File? = null,
+    /** Recently opened models on device (newest first). */
+    val library: List<File> = emptyList(),
     /** Pending "which units is this file in?" prompt for an oversized model. */
     val unitPrompt: UnitPrompt? = null,
 )

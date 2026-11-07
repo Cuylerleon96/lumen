@@ -117,6 +117,15 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
                     Button(onClick = { openModel.launch(arrayOf("*/*")) }) { Text("Open STL") }
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(onClick = { viewModel.loadCalibrationModel() }) { Text("Load calibration model") }
+                    if (state.library.isNotEmpty()) {
+                        Spacer(Modifier.height(16.dp))
+                        Text("Recent", style = MaterialTheme.typography.labelLarge)
+                        state.library.take(4).forEach { f ->
+                            TextButton(onClick = { viewModel.openFromLibrary(f) }) {
+                                Text(f.name.substringAfter('_', f.name), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
                 }
             }
         } else {

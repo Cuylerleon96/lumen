@@ -100,6 +100,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             refreshInputs()
             restoreModel(saved)
+            refreshLibrary()
         } catch (e: Exception) {
             _state.update { it.copy(ready = true, loadError = "Could not load the printer profiles: ${e.message}") }
         }
@@ -283,9 +284,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         else -> StlReader.read(bytes)
                     }
                     store.modelFile.outputStream().use { StlWriter.write(mesh, it) }   // normalize to STL for restore
+                    runCatching { store.addToLibrary(name, store.modelFile.readBytes()) }
                     name to mesh
                 }
                 setModel(name, mesh, centeredPlacement())
+                refreshLibrary()
                 _state.update { it.copy(lastResult = null) }
                 persist()
             } catch (e: StlFormatException) {
@@ -295,6 +298,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 showMessage("Could not open the model: ${e.message}")
             }
+        }
+    }
+
+    /** Re-open a model from the on-device library (F). */
+    fun openFromLibrary(file: File) {
+        viewModelScope.launch {
+            try {
+                val name = store.displayName(file)
+                val mesh = withContext(Dispatchers.IO) {
+                    val bytes = file.readBytes()
+                    val m = StlReader.read(bytes)
+                    store.modelFile.outputStream().use { StlWriter.write(m, it) }
+                    m
+                }
+                setModel(name, mesh, centeredPlacement())
+                _state.update { it.copy(lastResult = null) }
+                persist()
+            } catch (e: Exception) {
+                showMessage("Could not open ${store.displayName(file)}: ${e.message}")
+            }
+        }
+    }
+
+    private fun refreshLibrary() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val files = store.libraryFiles()
+            _state.update { it.copy(library = files) }
         }
     }
 
