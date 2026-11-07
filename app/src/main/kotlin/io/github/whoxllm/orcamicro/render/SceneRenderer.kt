@@ -134,27 +134,39 @@ abstract class SceneRenderer : GLSurfaceView.Renderer {
             return grid.toFloatArray() to outline.toFloatArray()
         }
 
-        /** Positions and flat normals, interleaved, for drawing a mesh. */
-        fun meshVertices(mesh: Mesh): java.nio.ByteBuffer {
+        /**
+         * Positions and flat normals, interleaved. Meshes above [maxTriangles] are decimated (every
+         * Nth triangle) so the vertex buffer stays bounded — a huge STL still renders on a phone
+         * instead of OOMing the upload and drawing nothing.
+         * @return the buffer and the vertex count to draw.
+         */
+        fun meshVertices(mesh: Mesh, maxTriangles: Int = 400_000): Pair<java.nio.ByteBuffer, Int> {
             val p = mesh.positions
-            val buffer = directBuffer(mesh.triangleCount * 3 * 6 * 4)
+            val total = mesh.triangleCount
+            val stride = if (total > maxTriangles) (total + maxTriangles - 1) / maxTriangles else 1
+            val outTris = (total + stride - 1) / stride
+            val buffer = directBuffer(maxOf(1, outTris) * 3 * 6 * 4)
             val out = buffer.asFloatBuffer()
             var i = 0
+            var t = 0
             while (i < p.size) {
-                val ux = p[i + 3] - p[i]; val uy = p[i + 4] - p[i + 1]; val uz = p[i + 5] - p[i + 2]
-                val vx = p[i + 6] - p[i]; val vy = p[i + 7] - p[i + 1]; val vz = p[i + 8] - p[i + 2]
-                var nx = uy * vz - uz * vy
-                var ny = uz * vx - ux * vz
-                var nz = ux * vy - uy * vx
-                val length = sqrt(nx * nx + ny * ny + nz * nz)
-                if (length > 0f) { nx /= length; ny /= length; nz /= length } else { nz = 1f }
-                for (k in 0 until 3) {
-                    out.put(p[i + k * 3]); out.put(p[i + k * 3 + 1]); out.put(p[i + k * 3 + 2])
-                    out.put(nx); out.put(ny); out.put(nz)
+                if (t % stride == 0) {
+                    val ux = p[i + 3] - p[i]; val uy = p[i + 4] - p[i + 1]; val uz = p[i + 5] - p[i + 2]
+                    val vx = p[i + 6] - p[i]; val vy = p[i + 7] - p[i + 1]; val vz = p[i + 8] - p[i + 2]
+                    var nx = uy * vz - uz * vy
+                    var ny = uz * vx - ux * vz
+                    var nz = ux * vy - uy * vx
+                    val length = sqrt(nx * nx + ny * ny + nz * nz)
+                    if (length > 0f) { nx /= length; ny /= length; nz /= length } else { nz = 1f }
+                    for (k in 0 until 3) {
+                        out.put(p[i + k * 3]); out.put(p[i + k * 3 + 1]); out.put(p[i + k * 3 + 2])
+                        out.put(nx); out.put(ny); out.put(nz)
+                    }
                 }
+                t += 1
                 i += 9
             }
-            return buffer
+            return buffer to outTris * 3
         }
     }
 }

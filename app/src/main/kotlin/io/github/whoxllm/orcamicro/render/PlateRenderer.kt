@@ -28,7 +28,7 @@ class PlateRenderer : SceneRenderer() {
         val current = mesh
         if (current !== uploaded) {
             meshBuffer?.delete()
-            meshBuffer = current?.let { GlBuffer(meshVertices(it), it.triangleCount * 3) }
+            meshBuffer = current?.let { mesh -> val (buf, count) = meshVertices(mesh); GlBuffer(buf, count) }
             uploaded = current
         }
         val buffer = meshBuffer ?: return
