@@ -150,6 +150,16 @@ private fun ResinSummary(state: UiState, onClick: () -> Unit, modifier: Modifier
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                state.model?.let { m ->
+                    val e = state.resinSettings.estimateResin(m.mesh.volumeAbsMm3())
+                    val cost = if (state.resinSettings.pricePerKg > 0) "  ·  %.2f".format(e.cost) else ""
+                    Text(
+                        "%.1f ml  ·  %.1f g%s".format(e.volumeMl, e.massG, cost),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             TextButton(onClick = onClick) { Text("Settings") }
         }
@@ -174,6 +184,9 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
             IntField("Bottom layers", s.bottomLayers) { viewModel.setResinSettings(s.copy(bottomLayers = it)) }
             IntField("Transition layers", s.transitionLayers) { viewModel.setResinSettings(s.copy(transitionLayers = it)) }
             NumField("Light-off delay (s)", s.lightOffSec) { viewModel.setResinSettings(s.copy(lightOffSec = it)) }
+            IntField("Anti-aliasing levels", s.antiAliasLevels) { viewModel.setResinSettings(s.copy(antiAliasLevels = it)) }
+            NumField("Resin density (g/ml)", s.materialDensityGPerMl) { viewModel.setResinSettings(s.copy(materialDensityGPerMl = it)) }
+            NumField("Resin price / kg", s.pricePerKg) { viewModel.setResinSettings(s.copy(pricePerKg = it)) }
             Spacer(Modifier.height(8.dp))
         }
     }

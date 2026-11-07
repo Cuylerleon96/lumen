@@ -26,6 +26,10 @@ data class ResinSettings(
     val bottomLightOffSec: Double = 7.0,
     /** Anti-aliasing levels (1 = off). Higher = grayscale edge smoothing. */
     val antiAliasLevels: Int = 1,
+    /** Resin density in g/ml — for the volume→weight estimate. */
+    val materialDensityGPerMl: Double = 1.1,
+    /** Resin price per kilogram — for the cost estimate (0 = unknown). */
+    val pricePerKg: Double = 0.0,
 
     // ---- Motion (Z) ----
     /** Z distance lifted off the film to peel, in mm. */
@@ -90,4 +94,7 @@ data class ResinSettings(
         }
         return total
     }
+
+    /** Resin volume/weight/cost for a solid mesh of [volumeMm3] (hollowing reduces the real volume). */
+    fun estimateResin(volumeMm3: Double): ResinEstimate = ResinEstimator.estimate(volumeMm3, materialDensityGPerMl, pricePerKg)
 }

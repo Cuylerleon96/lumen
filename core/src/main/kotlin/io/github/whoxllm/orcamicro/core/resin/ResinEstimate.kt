@@ -20,8 +20,12 @@ object ResinEstimator {
      * @param densityGPerMl resin density (g/ml)
      * @param pricePerKg resin price per kilogram (0 = unknown)
      */
-    fun estimate(mesh: Mesh, densityGPerMl: Double = DEFAULT_DENSITY_G_PER_ML, pricePerKg: Double = 0.0): ResinEstimate {
-        val volumeMl = mesh.volumeAbsMm3() / 1000.0
+    fun estimate(mesh: Mesh, densityGPerMl: Double = DEFAULT_DENSITY_G_PER_ML, pricePerKg: Double = 0.0): ResinEstimate =
+        estimate(mesh.volumeAbsMm3(), densityGPerMl, pricePerKg)
+
+    /** @param volumeMm3 solid-model volume in mm³ */
+    fun estimate(volumeMm3: Double, densityGPerMl: Double = DEFAULT_DENSITY_G_PER_ML, pricePerKg: Double = 0.0): ResinEstimate {
+        val volumeMl = volumeMm3 / 1000.0
         val massG = volumeMl * densityGPerMl
         val cost = massG / 1000.0 * pricePerKg
         return ResinEstimate(volumeMl, massG, cost)

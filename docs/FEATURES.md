@@ -52,7 +52,9 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - ✅ Slice → G-code; layer/toolpath preview; print time + filament estimate.
 - ✅ Tree/normal supports, brim, spiral vase (engine features).
 - 📋 G-code post-processing scripts; per-object settings; calibration wizards (flow/PA/temp).
-- 📋 Network print: Moonraker/Klipper, OctoPrint, PrusaLink, Bambu LAN/dev.
+- 📋 Network print: Moonraker/Klipper, OctoPrint, PrusaLink, Bambu LAN/dev. — **✅ Moonraker /
+  OctoPrint / PrusaLink done** (`PrinterUploader` + Send-to-printer dialog); Bambu LAN + post-processing
+  scripts still todo.
 - 💤 Belt printers; multi-material painting.
 
 ## D. Resin (MSLA) — the big build
@@ -61,6 +63,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
   — ADR 0003 option **B**. **PrusaSlicer 2.9.7 (newest)** cross-compiled for arm64; JNI bridge
   `libsla_engine.so` (`SlaEngine.nativeSlice(in, out, settingsJson)`); `ResinBackend` prefers it.
   Harness `native/sla/sla_cli.cpp` proves a cube → valid SL1 (90 layers) on the emulator.
+  **Verified end-to-end in-app** (`nativeSlice rc=0`, real SL1); model placed on the **origin-centred
+  SLA bed** (the FDM-bed placement produced empty layers).
 - ✅ **SL1 writer** (config.ini + per-layer grayscale PNG), streaming.
 - ✅ Platform-free grayscale **PNG encoder**.
 ### D.2 Print settings
@@ -90,7 +94,10 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 **Resin volume/weight/cost + print-time** estimate (fast + real).
 ### D.8 Output formats
 - ✅ SL1 / SL1S.
-- 📋 **CTB v3+** (variable RLE + XOR key 0x67 + RGB565 previews + SHA-256).
+- ✅ **CTB v3+** — clean-room writer (`CtbWriter`) + SL1→CTB converter (`Sl1ToCtb`); header/RLE7/
+  previews/ExtConfig per the catibo spec, unencrypted (key=0). **Independently validated** (Python
+  parser: 90 layers, per-layer z/exposure, RLE7 round-trips). Export picks the **printer's native
+  format** (`ResinPrinter.format`).
 - 📋 **GOO** (chunked RLE + inverted checksum).
 - 💤 PW0/PWS/PWMA/PWMS, PHOTON(S), CBDDLP, NANODLP, ZCODE, CXDLP, LGS.
 
