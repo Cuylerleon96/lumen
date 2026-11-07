@@ -68,6 +68,7 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
         message = state.message,
         onMessageConsumed = viewModel::consumeMessage,
         topActions = {
+            TextButton(onClick = { viewModel.switchTechnology() }) { Text("Switch") }
             if (state.model != null) {
                 IconButton(onClick = viewModel::removeModel) { Icon(Icons.Default.Delete, "Remove model") }
             }
