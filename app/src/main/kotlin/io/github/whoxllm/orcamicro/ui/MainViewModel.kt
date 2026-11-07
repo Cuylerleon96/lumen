@@ -19,6 +19,7 @@ import io.github.whoxllm.orcamicro.core.resin.MeshRasterizer
 import io.github.whoxllm.orcamicro.core.resin.ResinBackend
 import io.github.whoxllm.orcamicro.core.resin.ResinFormat
 import io.github.whoxllm.orcamicro.core.resin.ResinPrinter
+import io.github.whoxllm.orcamicro.core.resin.ResinProfile
 import io.github.whoxllm.orcamicro.core.resin.ResinSettings
 import io.github.whoxllm.orcamicro.core.resin.ResinSliceRequest
 import io.github.whoxllm.orcamicro.core.resin.Sl1ToCtb
@@ -457,6 +458,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setResinSettings(settings: ResinSettings) {
         _state.update { it.copy(resinSettings = settings) }
+        persist()
+    }
+
+    /** Load a resin exposure profile over the current settings (keeps motion + unrelated). */
+    fun applyResinProfile(name: String) {
+        val profile = ResinProfile.byName(name) ?: return
+        _state.update { it.copy(resinSettings = profile.applyTo(it.resinSettings)) }
         persist()
     }
 

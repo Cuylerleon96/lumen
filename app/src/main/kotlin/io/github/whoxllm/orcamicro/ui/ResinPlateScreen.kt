@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.whoxllm.orcamicro.core.resin.ResinPrinter
+import io.github.whoxllm.orcamicro.core.resin.ResinProfile
 import io.github.whoxllm.orcamicro.core.settings.BedShape
 import io.github.whoxllm.orcamicro.render.PlateRenderer
 import io.github.whoxllm.orcamicro.render.SceneView
@@ -193,6 +194,7 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
         ) {
             Text("Resin settings", style = MaterialTheme.typography.titleMedium)
             HorizontalDivider()
+            ResinProfilePicker(state, viewModel)
             PrinterPicker(state, viewModel)
             NumField("Layer height (mm)", s.layerHeightMm) { viewModel.setResinSettings(s.copy(layerHeightMm = it)) }
             NumField("Exposure (s)", s.exposureSec) { viewModel.setResinSettings(s.copy(exposureSec = it)) }
@@ -204,6 +206,31 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
             NumField("Resin density (g/ml)", s.materialDensityGPerMl) { viewModel.setResinSettings(s.copy(materialDensityGPerMl = it)) }
             NumField("Resin price / kg", s.pricePerKg) { viewModel.setResinSettings(s.copy(pricePerKg = it)) }
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun ResinProfilePicker(state: UiState, viewModel: MainViewModel) {
+    var expanded by remember { mutableStateOf(false) }
+    val current = state.resinSettings
+    Box {
+        ListItem(
+            headlineContent = { Text("Resin profile") },
+            supportingContent = { Text("${current.layerHeightMm} mm · ${current.exposureSec}s") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp),
+        ) { Text("Load") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ResinProfile.builtIn.forEach { profile ->
+                DropdownMenuItem(
+                    text = { Text(profile.name) },
+                    onClick = { viewModel.applyResinProfile(profile.name); expanded = false },
+                )
+            }
         }
     }
 }
