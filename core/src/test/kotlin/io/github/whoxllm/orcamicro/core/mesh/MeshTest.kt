@@ -54,6 +54,15 @@ class MeshTest {
         assertEquals(Vec3(5f, 22f, 31f), b.max)
         assertEquals(Vec3(0f, 12f, 16f), b.center)
     }
+
+    @Test
+    fun `volume of a box equals width times depth times height`() {
+        assertNear(6000.0, TestMeshes.box(10f, 20f, 30f).volumeAbsMm3())
+    }
+
+    private fun assertNear(expected: Double, actual: Double) {
+        kotlin.test.assertTrue(kotlin.math.abs(expected - actual) < 1e-2, "expected $expected but was $actual")
+    }
 }
 
 class PlacementTest {

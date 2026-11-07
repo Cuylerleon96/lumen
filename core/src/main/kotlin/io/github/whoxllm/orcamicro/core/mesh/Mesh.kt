@@ -64,6 +64,23 @@ class Mesh(val positions: FloatArray) {
         return Mesh(result)
     }
 
+    /** Signed volume in mm³ (divergence theorem); positive for an outward-wound closed mesh. */
+    fun volumeMm3(): Double {
+        var sixV = 0.0
+        var i = 0
+        while (i < positions.size) {
+            val ax = positions[i].toDouble(); val ay = positions[i + 1].toDouble(); val az = positions[i + 2].toDouble()
+            val bx = positions[i + 3].toDouble(); val by = positions[i + 4].toDouble(); val bz = positions[i + 5].toDouble()
+            val cx = positions[i + 6].toDouble(); val cy = positions[i + 7].toDouble(); val cz = positions[i + 8].toDouble()
+            sixV += ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)
+            i += FLOATS_PER_TRIANGLE
+        }
+        return sixV / 6.0
+    }
+
+    /** Absolute volume in mm³ (unsigned — for estimation regardless of winding). */
+    fun volumeAbsMm3(): Double = kotlin.math.abs(volumeMm3())
+
     companion object {
         const val FLOATS_PER_TRIANGLE = 9
     }
