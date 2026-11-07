@@ -35,7 +35,7 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 **Import OBJ, 3MF, STEP, AMF** (Lychee reads all; we read STL only).
 - 📋 **Mirror**, **Array/duplicate**, **"align to face"/lay-flat**, **planar cut**, **boolean CSG**.
 - 📋 **Measure / dimension / text** tools.
-- 💤 Smooth/emboss/warp; projection supports.
+- 💤 **Smooth/interpolate + wall smooth** · emboss · warp.
 
 ## C. FDM (via OrcaSlicer engine) — full page surface: `docs/research/complete-feature-surface.md`
 - ✅ **Orca `libslic3r` engine** cross-compiled for arm64 (build in flight on the build host).
@@ -67,11 +67,11 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 **Support painting** (brush: light/medium/heavy tags, "no-support" faces).
 - 📋 **Full param set** (PrusaSlicer SLA): pillar Ø/widening/connection · base Ø/height/safety · head front/penetration/width · object elevation/critical angle/max weight · point density/min-distance · enforcers · tree type/angle/branch/tip · **anchor + border-anchor distance**, **merge level**, **lattice XY/Z**, **intersection avoidance**.
 - 📋 **Orientation strategies** (min-support / min-contacts / min-projection / face-up-down) — HeyGears-style (`docs/research/heygears-support.md`).
-- 💤 Mini-supports; accordion supports.
+- 💤 **Low-depth (AI) support generator** · **projection supports** · mini-supports · accordion supports.
 ### D.4 Hollowing & drainage
-- 🔜 **Hollowing** (wall thickness, closing distance) via OpenVDB.
-- 🔜 **Drain holes** (place/drill, diameter/depth).
-- 📋 Hollow blockers/infill lattice; fill-holes.
+- 🔜 **Hollowing** via OpenVDB — **2D / 3D / voxel modes** (Lychee), wall thickness, closing distance, quality.
+- 🔜 **Drain holes** (place/drill, diameter/depth) + **hollow blockers** tab.
+- 📋 **Voxel pocket detection** (min pocket side/voxels, remove-below-holes, without-holes) · infill lattice · fill-holes · editable hollow voxels (tube brush).
 ### D.5 Anti-aliasing & masks
 - 📋 **Anti-aliasing** (grayscale edge levels / SSAA) in the writer.
 - 💤 Masks (mask PNG composited per border rules: mode/outset/slice).
@@ -88,7 +88,7 @@ _Last updated: 2026-11-06 (initial full inventory)._
 
 ## E. Profiles & libraries
 - ✅ **FDM profiles (rich, bundled from Orca):** ~1,545 machine (printer **+ nozzle variants**) · ~7,053 filament · ~3,341 process.
-- 📋 **Resin profile DB** (exposures per resin) + import/export — we only have 6 stubs.
+- 📋 **Resin profile DB** (exposures per resin) + **official + community resin DB** + import/export — we only have 6 stubs.
 - 📋 **Resin printer DB** (LCD res, pixel pitch, motion caps) — beyond 6 stubs.
 - 📋 **Strategy layer** (goal + material + printer → parameters; HeyGears-style) + per-resin calibrated defaults.
 - 📋 Support presets; printer discovery/connection.
@@ -148,7 +148,7 @@ Design: `docs/touch-interaction.md` (mode separation · loupe/offset-cursor · s
 - 📋 **Preset management**: save/load/import/export · inheritance · **compare presets** · dependencies · compatible printers/materials.
 - 📋 **Physical printer management** + device/network send.
 - 📋 **Project files** (save scene) · **multi-plate** · **per-object settings**.
-- 📋 **Undo/redo** · **autosave + crash recovery**.
+- 📋 **Undo/redo** · **autosave + crash recovery** · **print history** · **user backups**.
 - 📋 **Batch** process scene · batch convert · file queue.
 - 📋 **G-code console + preview** (layer slider, toolpath/speed/flow views).
 - 📋 **Validation warnings** (out-of-bounds, thin walls, overhangs, floating) + "how to fix" · display toggles (printable box/shadow/triangles).
