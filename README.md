@@ -53,6 +53,23 @@ on the build host / build host before starting engine work (see the
 - **First resin output format:** SL1 (open) → then CTB, then GOO.
 - **Local-only for now**; no remote/deploy.
 
+## Progress (2026-11-06)
+- **FDM engine build in flight** on the build host (fork of `whoxllm/OrcaMicro`,
+  OrcaSlicer 2.4.2, NDK r27c). Deps cross-compiled; OCCT compiling (~2400/5100).
+- **App — first-run technology choice shipped:** `TechnologyScreen` picks **FDM or
+  resin**, persisted, routes into that slicer's flow; a "Change slicer" affordance
+  switches later. New `Screen.TECHNOLOGY` / `Screen.RESIN`; `UiState`/`SavedState`
+  carry the choice.
+- **Resin core shipped** (`core/…/resin/`): `ResinPrinter`, `ResinSettings`,
+  `LayerImage`, a platform-free **grayscale PNG encoder**, the **SL1 writer**
+  (streams one layer at a time), and a **naive mesh→layer rasterizer**; unit tests.
+  Format + rasterizer logic validated via a Python mirror (PIL + zipfile open the
+  emitted SL1 cleanly).
+- Resin UI: `ResinPlateScreen` — pick printer, set exposures, load STL, **slice to
+  .sl1**, save via the system picker.
+- **Pending:** Kotlin compile/`assembleDebug` (build host busy), FDM-side "switch
+  slicer" entry, and grafting PrusaSlicer's SLA engine (supports/hollowing/AA).
+
 ## Fork base — OrcaMicro structure (what we extend)
 ```
 app/     Kotlin + Jetpack Compose + OpenGL ES 2 (the UI)        → add resin UI

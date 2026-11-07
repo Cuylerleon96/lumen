@@ -19,6 +19,11 @@ raster → **SL1** (zip of PNGs + config.ini).
 - **Exit test:** slice an STL on-device with supports; **unzip the .sl1**, confirm
   one PNG per layer + valid config; a desktop slicer (UVTools) **reads it without
   error**; a real printer (or NanoDLP/emulator) prints it.
+- **Progress:** SL1 writer + grayscale PNG encoder + naive rasterizer landed in
+  `core/resin/` (with tests); format validated via a Python mirror. The **PrusaSlicer
+  SLA engine graft (supports/hollowing/AA) is still pending** — the naive rasterizer
+  currently fills that role for a supported-less MVP. The `build-deps.sh` line that
+  excludes OpenVDB must be reversed for hollowing.
 
 ## Phase 3 — Resin format writers (CTB, then GOO)
 Implement CTB v3+ (variable RLE + XOR key 0x67 + previews) and GOO.
