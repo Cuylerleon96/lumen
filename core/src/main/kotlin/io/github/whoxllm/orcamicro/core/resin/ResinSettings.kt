@@ -76,4 +76,18 @@ data class ResinSettings(
         append(",\"faded_layers\":\"$transitionLayers\"")
         append('}')
     }
+
+    /**
+     * Estimated total print time (seconds) for a model [heightMm] tall: per-layer exposure +
+     * light-off + Z motion/rest, using bottom speeds for the first [bottomLayers]. D.7 (partial).
+     */
+    fun estimatedPrintTimeSec(heightMm: Double): Double {
+        val layers = (heightMm / layerHeightMm).toInt().coerceAtLeast(1)
+        var total = 0.0
+        for (i in 0 until layers) {
+            val bottom = i < bottomLayers
+            total += exposureFor(i) + (if (bottom) bottomLightOffSec else lightOffSec) + motionTimeSec(bottom)
+        }
+        return total
+    }
 }

@@ -143,7 +143,8 @@ private fun ResinSummary(state: UiState, onClick: () -> Unit, modifier: Modifier
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "${state.resinSettings.layerHeightMm} mm  ·  ${state.resinSettings.exposureSec}s  ·  ${state.resinSettings.bottomLayers} bottom",
+                    "${state.resinSettings.layerHeightMm} mm  ·  ${state.resinSettings.exposureSec}s  ·  ${state.resinSettings.bottomLayers} bottom" +
+                        (state.model?.size?.z?.let { "  ·  ~${formatDuration(state.resinSettings.estimatedPrintTimeSec(it.toDouble()))}" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -236,6 +237,16 @@ private fun IntField(label: String, value: Int, onChange: (Int) -> Unit) {
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+/** Formats a duration in seconds as e.g. "1h 23m" / "45m" / "12s". */
+private fun formatDuration(sec: Double): String {
+    val s = sec.toLong()
+    return when {
+        s >= 3600 -> "${s / 3600}h ${(s % 3600) / 60}m"
+        s >= 60 -> "${s / 60}m"
+        else -> "${s}s"
+    }
 }
 
 @Composable
