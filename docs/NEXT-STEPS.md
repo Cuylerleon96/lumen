@@ -1,8 +1,13 @@
 # Next steps — staged plan (RESUME HERE)
 
-Status snapshot: FDM engine building on the build host; resin core (SL1 writer, grayscale PNG,
-naive rasterizer) + first-run FDM/Resin picker + shared `PlateShell` are **written and committed**,
-but **not yet compiled/run**. Pick up at step 1.
+Status snapshot (2026-11-07): **SLA engine WORKS.** PrusaSlicer **2.9.7** (newest) `libslic3r` +
+`liblibseqarrange` cross-compiled for arm64 (deps incl. OpenVDB 11, OCCT, **Z3**, nlohmann_json). The
+`native/sla/sla_cli.cpp` harness **slices a 20 mm cube → valid SL1 on the emulator** (config.ini +
+90 layer PNGs 1440×2560, verified; emulator runs arm64 via native bridge). JNI bridge
+`libsla_engine.so` (`native/sla/sla_jni.cpp` → `SlaEngine.nativeSlice`) building. FDM engine
+(`liborcamicro_engine.so`) built; app builds + runs (picker); `:core:test` 36/0. Dark `AppTheme`
+implemented. **Build native trees into a DISK-BACKED dir — host `/tmp` is a 3.9 G tmpfs.**
+Pick up at the JNI wiring + app integration below.
 
 ## 0. In flight right now
 - **FDM engine build** = build host user unit `build.service`, marker
@@ -31,24 +36,18 @@ On the build host. Its login shell is **fish** → always `ssh build-host bash -
 - Optional: a **layer-image preview** for resin (render a rasterized layer), mirroring the G-code
   toolpath preview.
 
-## 3. Phase 2 — bring the PrusaSlicer SLA engine over (THE BIG ONE)
-**Decision first → write ADR 0003.** Key fact: OrcaSlicer's `libslic3r` does **not** contain the SLA
-pipeline (BambuStudio stripped it). Two ways to get real resin slicing:
-- **(A) Graft** PrusaSlicer's SLA code into our Orca `libslic3r`: copy `src/libslic3r/SLAPrint.{cpp,hpp}`,
-  `SLAPrintSteps.{cpp,hpp}`, `src/libslic3r/sla/**` (SupportTree, raster, hollowing, JobController),
-  `src/libslic3r/Format/SL1.cpp`, and wire `printer_technology` + `sla_print` config through the CLI
-  config path the JNI bridge already mirrors. Heavy: reconcile PrusaSlicer↔OrcaSlicer type drift.
-- **(B) Second engine**: cross-compile **PrusaSlicer's `libslic3r`** (has FDM **and** SLA) for
-  arm64 as a second `.so`; call it for resin only, keep the Orca `.so` for FDM. SLA already works in
-  PrusaSlicer → far less reconciliation; cost = two engines + two profile sets.
-- **Recommendation: (B)** — fastest path to a *correct* resin slice; both AGPL so direct vendoring
-  is licensed. Consolidate later only if desired.
-Then:
-- **Reverse the `build-deps.sh` line that excludes OpenVDB** (SLA hollowing needs it).
-- Keep `Sl1Writer` as a **cross-check**; PrusaSlicer emits SL1 natively.
-- JNI: add a resin entry point (mesh → `SLAPrint::process()` → SL1).
-- **Exit test:** slice an STL **with supports** on-device → unzip the .sl1 → **UVTools reads it
-  clean** → print it.
+## 3. Phase 2 — PrusaSlicer SLA engine — **DONE (2026-11-07)**
+Option **(B)** chosen (ADR 0003): a **second cross-compiled PrusaSlicer `libslic3r`** (own `.so`) for
+resin, Orca `.so` for FDM. **PrusaSlicer 2.9.7 (newest)** builds for arm64; `sla_cli` slices a cube →
+valid SL1 on the emulator. Patches in `native/sla/apply-prusa-patches.py` (OpenGL/GLEW guards,
+`IS_CROSS_COMPILE`, Imath/OpenVDB ABI 11, OpenCASCADE version). New deps: `nlohmann_json`, `Z3`
+(`libseqarrange`), `nanosvg`. `sla_cli.cpp` proves the pipeline; **`sla_jni.cpp`** is the JNI bridge
+(`SlaEngine.nativeSlice(in, out, settingsJson)`), building as `libsla_engine.so`.
+Remaining:
+- **Kotlin side**: `core/resin/SlaEngine.kt` — `System.loadLibrary("sla_engine")` + `external fun
+  nativeSlice(in: String, out: String, settingsJson: String): Int`; package the `.so` into
+  `app/src/main/jniLibs/arm64-v8a/`; wire `ResinBackend` to call it.
+- **Exit test:** slice an STL **with supports** on-device → unzip the .sl1 → **UVTools reads it clean**.
 
 ## 4. Phase 3 — CTB then GOO writers
 Clean-room from **UVTools** behaviour + **catibo/grid.space** specs. **Do NOT link mslicer's

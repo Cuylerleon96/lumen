@@ -1,0 +1,3 @@
+# JNI bridge shared library — links the static libslic3r (built -fPIC) into libsla_engine.so.
+add_library(sla_engine SHARED sla_jni.cpp)
+target_link_libraries(sla_engine PRIVATE libslic3r)
