@@ -226,8 +226,12 @@ object CtbWriter {
                     2 -> { out.write(0x80 or (bytes[0] and 0x3F)); out.write(bytes[1]) }   // 0b10xxxxxx
                     3 -> { out.write(0xC0 or (bytes[0] and 0x1F)); out.write(bytes[1]); out.write(bytes[2]) } // 0b110xxxxx
                     else -> {
-                        val b4 = if (bytes.size >= 4) bytes.sliceArray(bytes.size - 4 until bytes.size) else ByteArray(4)
-                        out.write(0xE0 or (b4[0] and 0x0F)); out.write(b4[1]); out.write(b4[2]); out.write(b4[3])
+                        val n = bytes.size
+                        val b0 = if (n >= 4) bytes[n - 4] else 0
+                        val b1 = if (n >= 4) bytes[n - 3] else 0
+                        val b2 = if (n >= 4) bytes[n - 2] else 0
+                        val b3 = if (n >= 4) bytes[n - 1] else 0
+                        out.write(0xE0 or (b0 and 0x0F)); out.write(b1); out.write(b2); out.write(b3)
                     }
                 }
             }
