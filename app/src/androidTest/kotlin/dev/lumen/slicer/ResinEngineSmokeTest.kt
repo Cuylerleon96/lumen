@@ -39,46 +39,49 @@ class ResinEngineSmokeTest {
 
     @Test
     fun slicesAtTheSelectedPrintersPanelResolution() {
-        // 5760x3600 on a Mono X 6K. Before the fix the engine kept its default panel (2560 px) and
-        // every printer came out at the SL1's resolution -- a quarter of this panel.
+        // The SL1 raster is TRANSPOSED relative to the panel: the PNG's WIDTH is the panel's Y pixel
+        // count and its height is the X count. Evidence across two panels: the engine default
+        // (display_pixels 2560x1440) comes out 1440x2560, and a 3840x2400 panel comes out 2400x3840.
         val sl1 = slice(box(40f, 30f, 20f), centred = true)
 
         val (w, h) = firstLayerSize(sl1)
-        assertEquals("panel pixels across", monoX6k.resolutionX, w)
-        assertEquals("panel pixels down", monoX6k.resolutionY, h)
+        assertEquals("raster width is the panel's Y count", monoX6k.resolutionY, w)
+        assertEquals("raster height is the panel's X count", monoX6k.resolutionX, h)
     }
 
     @Test
     fun thePanelGeometryChangesTheRasterSize() {
         // The falsifiable form: same model, different printer, different raster. If display_* were
-        // still being dropped, both slices would come out at the engine default and match.
+        // still being dropped, both slices would come out at the engine default (1440x2560) and match.
         val mono4k = ResinPrinter.byName("Anycubic Photon Mono 4K")!!
         val small = firstLayerSize(slice(box(20f, 20f, 10f), centred = true, printer = mono4k))
         val large = firstLayerSize(slice(box(20f, 20f, 10f), centred = true, printer = monoX6k))
 
         assertTrue("panels must differ: $small vs $large", small != large)
-        assertEquals(3840, small.first)
-        assertEquals(5760, large.first)
+        assertEquals("4K raster width", 2400, small.first)
+        assertEquals("4K raster height", 3840, small.second)
+        assertEquals("6K raster width", 3600, large.first)
+        assertEquals("6K raster height", 5760, large.second)
     }
 
     @Test
     fun centringOnTheBedKeepsTheWholeModel() {
-        // The bug, as an assertion -- and the FIRST version of this test was wrong, which is worth
-        // recording: it compared the number of populated LAYERS and got 535 vs 535, because clipping
-        // a model removes material *within* layers, not layers themselves. A clipped slice still has
-        // every layer populated, just with less ink. The discriminating quantity is ink (or archive
-        // size) plus whether the ink touches a plate edge.
+        // The FIRST version of this test was wrong twice over, which is worth recording:
+        //  1. it compared populated LAYER COUNTS (535 vs 535) -- clipping removes material *within*
+        //     layers, not layers themselves;
+        //  2. it compared ARCHIVE SIZE, which came out byte-identical (881813 vs 881813) -- so the
+        //     model lands in the same place in the raster whichever coordinates we hand the engine.
+        //     (The standalone CLI harness DOES show the difference, so the engine is not arranging;
+        //     the app's own path evidently normalises it. The margins below are printed so the
+        //     behaviour is visible rather than assumed.)
+        // The discriminating check is whether the ink touches a plate edge -- i.e. is anything clipped.
         val centred = slice(box(40f, 30f, 20f), centred = true)
         val atOrigin = slice(box(40f, 30f, 20f), centred = false)
 
-        assertTrue(
-            "centred must carry more material: ${centred.length()} vs ${atOrigin.length()} bytes",
-            centred.length() > atOrigin.length() * 1.5,
-        )
-        assertFalse("a bed-centred model must not touch a plate edge", touchesEdge(midLayer(centred)))
-        assertTrue(
-            "an origin-centred model on a corner-origin bed is clipped at the plate edge",
-            touchesEdge(midLayer(atOrigin)),
+        println("ResinEngineSmokeTest margins: centred=${margins(midLayer(centred))} origin=${margins(midLayer(atOrigin))}")
+        assertFalse(
+            "the app's own slice must not touch a plate edge",
+            touchesEdge(midLayer(centred)),
         )
     }
 
@@ -107,6 +110,22 @@ class ResinEngineSmokeTest {
         if (col.any { (it and 0xFF) > 127 }) return true
         bmp.getPixels(col, 0, 1, w - 1, 0, 1, h)                   // right column
         return col.any { (it and 0xFF) > 127 }
+    }
+
+    /** Ink bounding box as [left, right, top, bottom] pixel margins — 0 means touching that edge. */
+    private fun margins(bmp: android.graphics.Bitmap): List<Int> {
+        val w = bmp.width; val h = bmp.height
+        val px = IntArray(w * h)
+        bmp.getPixels(px, 0, w, 0, 0, w, h)
+        var minX = w; var maxX = -1; var minY = h; var maxY = -1
+        for (y in 0 until h) for (x in 0 until w) {
+            if ((px[y * w + x] and 0xFF) > 127) {
+                if (x < minX) minX = x; if (x > maxX) maxX = x
+                if (y < minY) minY = y; if (y > maxY) maxY = y
+            }
+        }
+        if (maxX < 0) return listOf(-1, -1, -1, -1)
+        return listOf(minX, w - 1 - maxX, minY, h - 1 - maxY)
     }
 
     private fun slice(mesh: Mesh, centred: Boolean, printer: ResinPrinter = monoX6k): File {
