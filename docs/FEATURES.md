@@ -123,7 +123,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 ## F. Project & platform
 - 🚧 **Project format** (save/load a plate with models+settings) — **✅ `.osproj`** (state+model ZIP;
   Save/Open buttons on the plate; `ProjectArchive` + `SettingsStore` export/import). Lychee LYS/LYL import still todo.
-- 📋 Model library; recent files.
+- 🚧 Model library / recent files — **✅ recents** (`library/` dir, pruned to 12; "Recent" list on the
+  empty plate re-opens in one tap). Full library UI (thumbnails, folders, search) still todo.
 - 💤 Cloud sync / shop; CLI mode; viewer app.
 
 ## G. Build / release / infra
