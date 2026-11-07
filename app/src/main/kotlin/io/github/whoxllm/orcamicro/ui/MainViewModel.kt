@@ -138,8 +138,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Load a calibration/test model — a step bar to verify resin exposure + dimensional accuracy. */
     fun loadCalibrationModel() {
-        setModel("calibration.stl", CalibrationModels.stepBar(), centeredPlacement())
-        showMessage("Calibration step bar loaded")
+        viewModelScope.launch {
+            setModel("calibration.stl", CalibrationModels.stepBar(), centeredPlacement())
+            showMessage("Calibration step bar loaded")
+        }
     }
 
     private suspend fun restoreModel(saved: SavedState) {
