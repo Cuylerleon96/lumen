@@ -1,8 +1,18 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 31cb4c0..f683ce8 100644
+index 31cb4c0..43c6897 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -472,8 +472,10 @@ endif ()
+@@ -56,6 +56,9 @@ set(OPENVDB_FIND_MODULE_PATH "" CACHE PATH "Path to OpenVDB installation's find
+ set(SLIC3R_GTK "2" CACHE STRING "GTK version to use with wxWidgets on Linux")
+ 
+ set(IS_CROSS_COMPILE FALSE)
++if (CMAKE_CROSSCOMPILING)
++    set(IS_CROSS_COMPILE TRUE)
++endif ()
+ 
+ if (SLIC3R_STATIC)
+     # Prefer config scripts over find modules. This is helpful when building with
+@@ -472,8 +475,10 @@ endif ()
  
  find_package(PNG REQUIRED)
  
@@ -15,7 +25,7 @@ index 31cb4c0..f683ce8 100644
  
  # Find glew or use bundled version
  if (SLIC3R_STATIC AND NOT SLIC3R_STATIC_EXCLUDE_GLEW)
-@@ -481,7 +483,11 @@ if (SLIC3R_STATIC AND NOT SLIC3R_STATIC_EXCLUDE_GLEW)
+@@ -481,7 +486,11 @@ if (SLIC3R_STATIC AND NOT SLIC3R_STATIC_EXCLUDE_GLEW)
      set(GLEW_VERBOSE ON)
  endif()
  
