@@ -31,18 +31,32 @@ Java_io_github_whoxllm_orcamicro_core_resin_SlaEngine_nativeSlice(
         cfg.apply(SLAFullPrintConfig::defaults());
         cfg.option<ConfigOptionEnumGeneric>("printer_technology", true)->value = (int)ptSLA;
 
-        // Settings overrides: JSON object of key -> value (string or number).
+        // Settings overrides: JSON object of key -> value (string or number). Set by typed value —
+        // string deserialization is fragile for enum/float options. A bad key is logged + skipped,
+        // never aborting the slice.
         if (js && *js) {
             LOGI("settings json: %s", js);
-            auto j = nlohmann::json::parse(js);
-            for (auto it = j.begin(); it != j.end(); ++it) {
-                LOGI("setting %s = %s", it.key().c_str(), it.value().dump().c_str());
-                if (it.value().is_string())
-                    cfg.set(it.key(), it.value().get<std::string>());
-                else if (it.value().is_number())
-                    cfg.set(it.key(), std::to_string(it.value().get<double>()));
-                else if (it.value().is_boolean())
-                    cfg.set(it.key(), it.value().get<bool>() ? "1" : "0");
+            auto num = [](const nlohmann::json& v) -> double {
+                return v.is_number() ? v.get<double>() : std::stod(v.get<std::string>());
+            };
+            try {
+                auto j = nlohmann::json::parse(js);
+                for (auto it = j.begin(); it != j.end(); ++it) {
+                    const std::string key = it.key();
+                    try {
+                        if (key == "layer_height" || key == "exposure_time" || key == "initial_exposure_time")
+                            cfg.option<ConfigOptionFloat>(key, true)->value = num(it.value());
+                        else if (key == "faded_layers")
+                            cfg.option<ConfigOptionInt>(key, true)->value = (int)num(it.value());
+                        else
+                            cfg.set(key, it.value().is_string() ? it.value().get<std::string>() : it.value().dump());
+                        LOGI("set %s ok", key.c_str());
+                    } catch (const std::exception& e) {
+                        LOGE("skip setting %s: %s", key.c_str(), e.what());
+                    }
+                }
+            } catch (const std::exception& e) {
+                LOGE("settings parse failed: %s", e.what());
             }
         }
 
