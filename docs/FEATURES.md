@@ -106,7 +106,9 @@ _Last updated: 2026-11-06 (initial full inventory)._
   previews/ExtConfig per the catibo spec, unencrypted (key=0). **Independently validated** (Python
   parser: 90 layers, per-layer z/exposure, RLE7 round-trips). Export picks the **printer's native
   format** (`ResinPrinter.format`).
-- 📋 **GOO** (chunked RLE + inverted checksum).
+- ✅ **GOO** (Elegoo/Phrozen) — clean-room writer (`GooWriter`) built from the open GPL UVTools layout:
+  full big-endian header (61 fields), LayerDef table, chunked RLE (magic `0x55`, plain runs, NOT
+  checksum), footer. **RLE round-trip unit-tested.** (Blank previews; layer-table offsets correct.)
 - 💤 PW0/PWS/PWMA/PWMS, PHOTON(S), CBDDLP, NANODLP, ZCODE, CXDLP, LGS.
 
 ## E. Profiles & libraries
