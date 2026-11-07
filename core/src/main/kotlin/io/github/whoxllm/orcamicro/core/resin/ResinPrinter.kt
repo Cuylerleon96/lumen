@@ -2,6 +2,16 @@ package io.github.whoxllm.orcamicro.core.resin
 
 import kotlinx.serialization.Serializable
 
+/** Native output container a resin printer expects. */
+enum class ResinFormat(val ext: String, val mime: String) {
+    /** Chitubox/Elegoo/Creality/Phrozen/Anycubic-native. */
+    CTB("ctb", "application/octet-stream"),
+    /** Prusa SL1 (ZIP of grayscale PNGs). */
+    SL1("sl1", "application/zip"),
+    /** Elegoo GOO (chunked RLE). */
+    GOO("goo", "application/octet-stream"),
+}
+
 /**
  * A masked-SLA resin printer: the LCD resolution and pixel pitch decide the build area.
  * Build area (mm) = resolution × pixel size.
@@ -16,6 +26,8 @@ data class ResinPrinter(
     /** Pixel pitch in micrometres. */
     val pixelSizeMicrons: Double,
     val buildHeightMm: Double,
+    /** Native file format this machine consumes. */
+    val format: ResinFormat = ResinFormat.CTB,
 ) {
     val buildWidthMm: Double get() = resolutionX * pixelSizeMicrons / 1000.0
     val buildDepthMm: Double get() = resolutionY * pixelSizeMicrons / 1000.0
