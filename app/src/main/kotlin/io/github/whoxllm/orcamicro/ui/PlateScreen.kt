@@ -121,6 +121,7 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
             state = state,
             onChange = viewModel::setPlacement,
             onCenter = viewModel::centerModel,
+            onFit = viewModel::fitToBuildVolume,
             onDismiss = { showPlacement = false },
         )
     }
@@ -167,6 +168,7 @@ fun PlacementSheet(
     state: UiState,
     onChange: (Placement) -> Unit,
     onCenter: () -> Unit,
+    onFit: () -> Unit,
     onDismiss: () -> Unit,
     /** Resin places the model on the origin-centred SLA bed, so only rotate/scale apply. */
     showPosition: Boolean = true,
@@ -220,6 +222,7 @@ fun PlacementSheet(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
                 if (showPosition) OutlinedButton(onClick = onCenter) { Text("Center") }
+                OutlinedButton(onClick = onFit) { Text("Fit") }
                 OutlinedButton(onClick = {
                     onChange(Placement(centerX = bed?.centerX ?: p.centerX, centerY = bed?.centerY ?: p.centerY))
                 }) { Text("Reset") }

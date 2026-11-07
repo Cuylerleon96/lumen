@@ -317,6 +317,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         setPlacement(model.placement.copy(centerX = bed.centerX, centerY = bed.centerY))
     }
 
+    /** Scale the model down so it fits the build volume (a no-op if it already fits). */
+    fun fitToBuildVolume() {
+        val state = _state.value
+        val model = state.model ?: return
+        val bed = state.bed ?: return
+        val size = model.placed.bounds().size
+        if (size.x <= 0f || size.y <= 0f || size.z <= 0f) return
+        val factor = minOf(bed.width / size.x, bed.depth / size.y, state.printableHeight / size.z).coerceAtMost(1f)
+        if (factor >= 0.999f) return showMessage("Already fits the build volume")
+        val newScale = (model.placement.scalePercent * factor).coerceIn(10f, 400f)
+        setPlacement(model.placement.copy(scalePercent = newScale))
+        showMessage("Scaled to ${newScale.roundToInt()}% to fit")
+    }
+
     fun removeModel() {
         _state.update { it.copy(model = null, lastResult = null, slice = SliceState.Idle) }
         viewModelScope.launch(Dispatchers.IO) { store.modelFile.delete() }

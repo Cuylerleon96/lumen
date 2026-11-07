@@ -135,6 +135,7 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
             state = state,
             onChange = viewModel::setPlacement,
             onCenter = viewModel::centerModel,
+            onFit = viewModel::fitToBuildVolume,
             onDismiss = { showPlacement = false },
             showPosition = false,
         )
