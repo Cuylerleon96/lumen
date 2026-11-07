@@ -66,4 +66,14 @@ data class ResinSettings(
         val retractSec = if (retract > 0) retractDistanceMm / retract * 60.0 else 0.0
         return restBeforeLiftSec + liftSec + restAfterLiftSec + retractSec + restAfterRetractSec
     }
+
+    /** Settings as a JSON object of PrusaSlicer SLA config keys (consumed by the JNI engine bridge). */
+    fun toEngineJson(): String = buildString {
+        append('{')
+        append("\"layer_height\":\"$layerHeightMm\"")
+        append(",\"exposure_time\":\"$exposureSec\"")
+        append(",\"initial_exposure_time\":\"$bottomExposureSec\"")
+        append(",\"faded_layers\":\"$transitionLayers\"")
+        append('}')
+    }
 }

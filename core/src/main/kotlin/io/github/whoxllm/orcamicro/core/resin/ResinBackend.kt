@@ -2,9 +2,11 @@ package io.github.whoxllm.orcamicro.core.resin
 
 import io.github.whoxllm.orcamicro.core.Technology
 import io.github.whoxllm.orcamicro.core.mesh.Mesh
+import io.github.whoxllm.orcamicro.core.mesh.StlWriter
 import io.github.whoxllm.orcamicro.core.slicing.SliceOutcome
 import io.github.whoxllm.orcamicro.core.slicing.SliceRequest
 import io.github.whoxllm.orcamicro.core.slicing.SlicingBackend
+import java.io.File
 import java.io.OutputStream
 
 /** A resin (MSLA) slice request: a placed mesh, a printer and its settings. */
@@ -33,6 +35,13 @@ object ResinBackend : SlicingBackend {
     ): SliceOutcome {
         val r = request as? ResinSliceRequest
             ?: return SliceOutcome.Layers(request.outputName, 0, listOf("ResinBackend requires a ResinSliceRequest"))
+
+        // Prefer the real PrusaSlicer SLA engine (supports + hollowing + rasterize); fall back to the
+        // naive rasterizer when the native library isn't present (host tests / non-arm64).
+        if (SlaEngine.ensureLoaded()) {
+            sliceWithEngine(r, out, onProgress)?.let { return it }
+        }
+
         val layers = MeshRasterizer.layerCount(r.mesh, r.settings)
         onProgress(0, "Preparing $layers layers")
         Sl1Writer.write(out, r.outputName, r.printer, r.settings, layers) { i ->
@@ -41,5 +50,30 @@ object ResinBackend : SlicingBackend {
             image
         }
         return SliceOutcome.Layers(r.outputName, layers)
+    }
+
+    /** Run the native SLA engine (mesh -> SL1). Returns null on failure so the caller can fall back. */
+    private fun sliceWithEngine(
+        r: ResinSliceRequest,
+        out: OutputStream,
+        onProgress: (percent: Int, text: String) -> Unit,
+    ): SliceOutcome? {
+        val stl = File.createTempFile("mslice", ".stl")
+        val sl1 = File.createTempFile("mslice", ".sl1")
+        try {
+            onProgress(2, "Preparing mesh")
+            stl.outputStream().use { StlWriter.write(r.mesh, it) }
+            onProgress(5, "Slicing (SLA engine)")
+            val rc = SlaEngine.nativeSlice(stl.absolutePath, sl1.absolutePath, r.settings.toEngineJson())
+            if (rc != 0 || !sl1.exists() || sl1.length() == 0L) return null
+            onProgress(95, "Writing archive")
+            sl1.inputStream().use { it.copyTo(out) }
+            onProgress(100, "Done")
+            return SliceOutcome.Layers(r.outputName, MeshRasterizer.layerCount(r.mesh, r.settings))
+        } catch (t: Throwable) {
+            return null
+        } finally {
+            stl.delete(); sl1.delete()
+        }
     }
 }
