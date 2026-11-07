@@ -70,6 +70,21 @@ auto-orient/cut/mirror/array.
 - **`docs/research/feature-methods.md`** — method + open reference for each feature (answers "how does Lychee do X").
 - REA (`morluto/rea` MCP) is the optional lens for behavior/format **investigation** (not for lifting engine code).
 
+## Build the app (build host) — WORKING command
+SDK is a **symlink** `~/android-sdk` → `/mnt/storage/tools/android-sdk` (different fs: `find -xdev`
+misses it). JDK: `/usr/lib/jvm/java-17-openjdk`. The app task **requires** the Orca profiles arg:
+```bash
+cd ~/Projects/mobile-slicer-src
+printf 'sdk.dir=%s\n' "$HOME/android-sdk" > local.properties
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk ANDROID_HOME=$HOME/android-sdk ANDROID_SDK_ROOT=$HOME/android-sdk \
+  ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx3072m -Dkotlin.daemon.jvmargs=-Xmx1024m \
+  -PorcaResourcesDir="$HOME/Projects/mobile-slicer-src/native/build/orcaslicer/resources" \
+  :core:test assembleDebug
+```
+Without `-PorcaResourcesDir` → `:app:copyOrcaResources` fails ("Gradle property 'orcaResourcesDir' has no
+value"). The Orca checkout (with `resources/profiles`, 133 entries) is at `native/build/orcaslicer/` from
+the engine build — no separate `fetch-orca.sh --profiles-only` needed. `:core:compileKotlin` passes.
+
 ## Resume pointers
 - Repo: `~/Projects/mobile-slicer/` (this file = `docs/NEXT-STEPS.md`).
 - Remote build tree: build host `~/Projects/mobile-slicer-src/`.
