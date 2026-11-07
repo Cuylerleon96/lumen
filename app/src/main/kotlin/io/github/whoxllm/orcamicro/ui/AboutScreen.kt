@@ -67,6 +67,8 @@ fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("updates", Context.MODE_PRIVATE) }
     var baseUrl by remember { mutableStateOf(prefs.getString("baseUrl", "") ?: "") }
+    // Auto-default the update server to the build host on the tailnet (MagicDNS) so it needn't be typed.
+    val effectiveBase = baseUrl.ifBlank { "http://build-host:8799" }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -116,8 +118,7 @@ fun AboutScreen(onBack: () -> Unit) {
             )
             OutlinedButton(
                 onClick = {
-                    val base = baseUrl.trim()
-                    if (base.isBlank()) { status = "Enter the update server URL first."; return@OutlinedButton }
+                    val base = effectiveBase.trim()
                     busy = true; status = "Checking…"
                     scope.launch {
                         try {
