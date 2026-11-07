@@ -3,7 +3,7 @@
 set +e
 R="$HOME/Projects/mobile-slicer-src"; CM="$HOME/.local/opt/cmake-3.30.5-linux-x86_64"
 ADB="$HOME/android-sdk/platform-tools/adb"
-CFG="${1:-/tmp/prusa297-cfg}"
+CFG="${1:-$HOME/Projects/mobile-slicer-src/native/build/prusa297-cfg}"
 BIN="$CFG/src/sla_cli/sla_cli"
 export ANDROID_NDK_ROOT="$HOME/android-sdk/ndk/27.2.12479018" ORCAMICRO_PREFIX="$R/native/build/prefix-sla"
 
