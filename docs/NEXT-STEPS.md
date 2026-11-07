@@ -59,6 +59,12 @@ RGB565 previews + SHA-256.
 - iOS (same engine, SwiftUI front-end).
 - Network print (Moonraker / Chitu LAN); resin + filament libraries; cost/time estimation.
 
+## Backlog from the Lychee gap analysis
+See **`docs/research/lychee-feature-gap.md`** (extracted from Lychee on the build host). Priority after
+the SLA graft: **P0** motion settings (lift/retract/rest) · supports · hollowing+drain; **P1** AA,
+resin/printer profile DB + import/export, island detection, resin/time/cost estimation,
+auto-orient/cut/mirror/array.
+
 ## Resume pointers
 - Repo: `~/Projects/mobile-slicer/` (this file = `docs/NEXT-STEPS.md`).
 - Remote build tree: build host `~/Projects/mobile-slicer-src/`.
