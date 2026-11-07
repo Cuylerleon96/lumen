@@ -30,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun OrcaMicroApp(viewModel: MainViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    OrcaMicroTheme {
+    AppTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when {
                 !state.ready -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
