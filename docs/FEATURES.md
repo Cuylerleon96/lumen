@@ -106,14 +106,31 @@ independent CTB validator)._
 - ✅ **In-app update system** (About → Check for updates; `server/` publishes from the build host).
 - 🔜 **FDM-side "switch slicer"** entry (only resin has it today).
 - 📋 Undo/redo across edits; **multi-model plate (multiple objects on one plate)** — requested by Cuyler
-  2026-11-07, "with per model settings". Plan: `UiState.models: List<ModelState>` + a selected id; the
-  renderer draws one buffer per model (it already uploads per mesh); picking returns the NEAREST model
-  hit, so a tap selects the one under the finger; the placement sheet then edits the selected model
-  (position/rotate/scale/mirror/lay-flat already per model); arrange runs with N footprints and reports
-  what did not fit. **Slicing needs no engine change**: merge the placed meshes into one STL — the engine
-  already slices one object with several islands. **Per-model PRINT settings** (infill/layer
-  height/supports per object) are a different, deeper axis: they need the engine to receive
-  multi-object metadata (3MF with per-object config), not a merged mesh — scope still open.
+  2026-11-07, "with per model settings".
+  **DECIDED 2026-11-07: per-model PRINT settings** (Cuyler: "Per model print settings") — infill, layer
+  height, supports etc. per object, not just per-model placement.
+  **FEASIBILITY SETTLED BY READING THE ENGINE, not guessed** (`libslic3r/Format/bbs_3mf.cpp`):
+  1. The shim already loads the model with the GENERIC reader — `Model::read_from_file(path, …,
+     LoadStrategy::LoadModel | LoadStrategy::AddDefaultInstances)` — which dispatches on format, so it
+     already accepts **3MF/OBJ/AMF**, not just STL. **No native relink is needed to load a project
+     file.** (A relink costs hours and risks the ninja state, so this is the difference between a
+     feature and a project.)
+  2. The 3MF importer reads `Metadata/model_settings.config` and applies each object's metadata with
+     `model_object->config.set_deserialize(key, value, …)` — i.e. **any process key can be overridden
+     per object**; `name`/`module` are the only special-cased keys.
+  3. **TRAP**: an `<object>` block in that file without a `<part>` leaves that object's volume list
+     EMPTY (the "whole geometry as one volume" fallback only runs when there is NO metadata entry at
+     all), so it can silently produce an object with nothing to print. Always write one `<part
+     id="1" subtype="normal_part">` per object.
+  Plan: (a) a Kotlin 3MF writer in `:core` (zip of `[Content_Types].xml`, `_rels/.rels`,
+  `3D/3dmodel.model` with one object+mesh per model and per-model placement in the build-item transform,
+  and `Metadata/model_settings.config` with the per-object keys), (b) the slice job passes that 3MF when
+  there is more than one model or any per-object override, keeping today's STL path as the single-model
+  default, (c) a per-object settings surface driven by the engine's own key definitions, (d) assert the
+  structure in a unit test with hand-written expected XML plus an independent Python unzip check, then
+  verify on device that two objects with different `layer_height` really do differ in the G-code.
+  Multi-model plate state (list + selected id, nearest-hit picking, arrange over N footprints) is the
+  prerequisite and comes first.
 - 🔜 **Transparent transform sheet** (Cuyler 2026-11-07): the placement sheet must not hide the plate —
   you judge a rotation by watching the model, so drop the modal scrim and make the sheet translucent.
 - 📋 Onboarding / first-run tips; units + language settings (i18n).
