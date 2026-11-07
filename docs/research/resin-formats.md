@@ -62,6 +62,13 @@ Freshly re-derived / mirrored from UVTools + catibo + grid.space + mslicer:
 - **RLE128** (PhotonS): 2 B fixed, **big-endian** length, 8-bit color. `0x00`..`0xFF`.
 - **GOO RLE**: 0x55 magic, chunked (`type:2 | lenenc:2 | lenlow:4`), single fresh
   checksum byte (bitwise-NOT of byte sum), layer delimiter `0x0D 0x0A`.
+- **GOO header** (confirmed from open UVTools `GooFile.cs`; whole file is **big-endian**):
+  Version 4 B `"V3.0"` · Magic 8 B `07 00 00 00 44 4C 50 00` · SoftwareName 32 B ·
+  SoftwareVersion 24 B · FileCreateTime 24 B (`yyyy-MM-dd HH:mm:ss`) · MachineName 32 B ·
+  MachineType 32 B (`"DLP"`) · ProfileName 32 B (all NUL-terminated) · AntiAliasingLevel u16 (8) ·
+  GreyLevel u16 (1) · BlurLevel u16 (0) · SmallPreview565 116×116×2 B + `0D 0A` ·
+  BigPreview565 290×290×2 B + `0D 0A` · then print params + layer defs + per-layer RLE (layer magic
+  `0x55`). *(Layer-table offsets still to be pulled from the same file before a writer is coded.)*
 - **CTBEncrypted**: AES-256-CBC (hardcoded key+IV to the format spec) + the XOR layer.
 
 Grayscale AA: CTB stores **128 levels** (0x00 masked → 0x7F full); anti-aliasing =
