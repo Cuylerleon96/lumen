@@ -14,3 +14,5 @@ app/src/main/jniLibs/
 # Signing keys never go in the repository (CI reads the release key from secrets)
 *.keystore
 *.jks
+build-run.log
+*.log
