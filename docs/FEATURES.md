@@ -76,6 +76,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 Bottom-layer taper (`burnLayerDecreasing`); grey-level compensation (`*Compensation`/`GreyValue`); PWM.
 - 💤 **TSMC two-stage motion**; **tilt/vat-printer motion** (tiltUp/Down cycles/delays/speeds).
 ### D.3 Supports
+- 🚧 **Auto supports** (PrusaSlicer `sla::SupportTree`) — **settings exposed** (enable, density,
+  contact/pillar diameter, object gap) + wired to the engine; interactive add/remove/edit points todo.
 - 🔜 **Auto-supports** (from the SLA engine) — island/overhang-driven, **load/peel-aware** tree supports.
 - 📋 **Manual support editing**: place/move/delete · **struts** (point-to-point) · contact/strut **shapes** · advanced segment editing (Lychee) · **proximity checker**.
 - 📋 **Support painting** (brush: light/medium/heavy tags, "no-support" faces).
