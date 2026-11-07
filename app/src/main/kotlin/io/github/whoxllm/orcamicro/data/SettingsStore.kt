@@ -34,8 +34,9 @@ data class SavedState(
 
 /** Persists [SavedState] as JSON in app storage, and keeps a copy of the current model. */
 class SettingsStore(context: Context) {
-    private val stateFile = File(context.filesDir, "state.json")
-    val modelFile = File(context.filesDir, "model.stl")
+    private val dir = context.filesDir
+    private val stateFile = File(dir, "state.json")
+    val modelFile = File(dir, "model.stl")
 
     fun load(): SavedState = try {
         if (stateFile.isFile) json.decodeFromString(SavedState.serializer(), stateFile.readText()) else SavedState()
@@ -47,6 +48,37 @@ class SettingsStore(context: Context) {
         val tmp = File(stateFile.path + ".tmp")
         tmp.writeText(json.encodeToString(SavedState.serializer(), state))
         tmp.renameTo(stateFile)
+    }
+
+    /** Export the project (state + model) into a single `.osproj` ZIP. Returns the file count. */
+    fun exportProject(out: File): Int {
+        var n = 0
+        java.util.zip.ZipOutputStream(out.outputStream().buffered()).use { zip ->
+            for (f in listOf(stateFile, modelFile)) {
+                if (!f.isFile) continue
+                zip.putNextEntry(java.util.zip.ZipEntry(f.name))
+                f.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry(); n++
+            }
+        }
+        return n
+    }
+
+    /** Import a project ZIP, replacing the current state + model. Returns true if state was found. */
+    fun importProject(zipFile: File): Boolean {
+        var gotState = false
+        java.util.zip.ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
+            var e = zis.nextEntry
+            while (e != null) {
+                val name = File(e.name).name   // strip any path — we only accept our two files
+                if (name == stateFile.name || name == modelFile.name) {
+                    File(dir, name).outputStream().use { zis.copyTo(it) }
+                    if (name == stateFile.name) gotState = true
+                }
+                zis.closeEntry(); e = zis.nextEntry
+            }
+        }
+        return gotState
     }
 
     private companion object {

@@ -60,6 +60,12 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
     val openModel = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.openModel(it) }
     }
+    val exportProject = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        uri?.let { viewModel.exportProject(it) }
+    }
+    val importProject = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { viewModel.importProject(it) }
+    }
     var showPlacement by rememberSaveable { mutableStateOf(false) }
 
     PlateShell(
@@ -70,6 +76,8 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
         onMessageConsumed = viewModel::consumeMessage,
         topActions = {
             TextButton(onClick = { viewModel.switchTechnology() }) { Text("Switch") }
+            TextButton(onClick = { exportProject.launch("project.osproj") }) { Text("Save") }
+            TextButton(onClick = { importProject.launch(arrayOf("*/*")) }) { Text("Open") }
             if (state.model != null) {
                 IconButton(onClick = viewModel::removeModel) { Icon(Icons.Default.Delete, "Remove model") }
             }

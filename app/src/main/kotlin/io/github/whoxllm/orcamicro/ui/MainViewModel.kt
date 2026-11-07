@@ -103,6 +103,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ---- project save/load (F) -----------------------------------------------------------
+
+    /** Export the current project (state + model) to [uri]. */
+    fun exportProject(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val tmp = File(app.cacheDir, "project.osproj")
+                store.exportProject(tmp)
+                app.contentResolver.openOutputStream(uri)?.use { o -> tmp.inputStream().use { it.copyTo(o) } }
+                    ?: throw IllegalStateException("could not open output")
+                tmp.delete()
+            }.onSuccess { showMessage("Project exported") }
+                .onFailure { showMessage("Export failed: ${it.message}") }
+        }
+    }
+
+    /** Import a project from [uri], replacing the current state + model, then reload. */
+    fun importProject(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                val tmp = File(app.cacheDir, "import.osproj")
+                app.contentResolver.openInputStream(uri)?.use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+                    ?: return@launch
+                val got = store.importProject(tmp)
+                tmp.delete(); got
+            }.getOrElse { showMessage("Import failed: ${it.message}"); false }
+            if (ok) load()
+        }
+    }
+
     private suspend fun restoreModel(saved: SavedState) {
         val name = saved.modelName ?: return
         val mesh = withContext(Dispatchers.IO) {
