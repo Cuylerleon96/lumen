@@ -48,4 +48,41 @@ object CalibrationModels {
         }
         return Mesh(tris.toFloatArray())
     }
+
+    /**
+     * An FDM calibration tower: [segments] stacked blocks, each [segmentHeightMm] tall, the segment
+     * above inset by [insetPerSegmentMm] in X and Y so the segment boundaries are readable by eye
+     * (count the steps) once it is printed. Sits on Z=0, centred on the origin.
+     *
+     * The blocks are **unioned with real CSG**, not emitted as a triangle soup: touching boxes leave
+     * internal faces where they meet, and a slicer then has to guess whether those are walls — on a
+     * calibration print that shows up as a seam or a blob exactly where you are trying to read a
+     * result. A union gives one manifold solid.
+     */
+    fun fdmTower(
+        segments: Int = 9,
+        segmentHeightMm: Float = 10f,
+        widthMm: Float = 20f,
+        depthMm: Float = 20f,
+        insetPerSegmentMm: Float = 0.5f,
+    ): Mesh {
+        require(segments >= 1) { "segments must be ≥ 1" }
+        var solid = box(widthMm, depthMm, segmentHeightMm, 0f, 0f, segmentHeightMm / 2f)
+        for (i in 1 until segments) {
+            val w = widthMm - i * insetPerSegmentMm
+            val d = depthMm - i * insetPerSegmentMm
+            require(w > 0f && d > 0f) { "inset too large: segment $i would vanish" }
+            val z = i * segmentHeightMm
+            solid = Csg.union(solid, box(w, d, segmentHeightMm, 0f, 0f, z + segmentHeightMm / 2f))
+        }
+        return solid
+    }
+
+    /**
+     * Z of each segment boundary (mm, ascending), i.e. the heights at which a G-code ramp must change
+     * value. Boundary `i` is the bottom of segment `i`; the list therefore starts at
+     * `segmentHeightMm` (segment 0 starts at the bed, Z=0).
+     */
+    fun towerBoundaries(segments: Int, segmentHeightMm: Float): List<Float> =
+        (1 until segments).map { it * segmentHeightMm }
 }
