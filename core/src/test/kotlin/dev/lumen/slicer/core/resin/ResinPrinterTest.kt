@@ -26,7 +26,15 @@ class ResinPrinterTest {
     @Test
     fun `the anycubic machines match their published build volumes`() {
         assertVolume("Anycubic Photon Mono X", 192.0, 120.0)
-        assertVolume("Anycubic Photon Mono X 6K", 195.84, 122.4)
+        // The 6K panel is 198.15 x 123.84 at 34.4 um. This is deliberately NOT the published build
+        // volume (195.84 x 122.4): that figure is the PRINTABLE AREA, a firmware/mechanical margin
+        // inside the panel. Three sources, and the odd one out is the marketing number:
+        //   panel from the machine table in Anycubic's own files -> 34.40 um  (UVTools AnycubicFile.cs)
+        //   panel from the marketed 9.25" diagonal              -> 34.59 um
+        //   published build volume / 5760                       -> 34.00 um  <- printable area, not pitch
+        // Taking 34.00 as the pitch scales every print by 1.2%; the panel size is what the raster has
+        // to cover, so it is what display_width/display_height must carry.
+        assertVolume("Anycubic Photon Mono X 6K", 198.14, 123.84)
     }
 
     @Test

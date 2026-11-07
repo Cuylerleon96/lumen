@@ -41,10 +41,16 @@ data class ResinPrinter(
          */
         val builtIn: List<ResinPrinter> = listOf(
             // Anycubic first: these are the machines this project is actually developed against.
-            // Resolution x pixel pitch reproduces the published build volume exactly for both
-            // (see ResinPrinterTest) -- which is the only way to catch a marketing "34.45 um".
+            // Verify a pitch arithmetically (see ResinPrinterTest), but check it against the PANEL --
+            // a published build volume is the printable area and can be smaller. See the 6K note.
             ResinPrinter("Anycubic Photon Mono X", 3840, 2400, 50.0, 245.0),
-            ResinPrinter("Anycubic Photon Mono X 6K", 5760, 3600, 34.0, 245.0),
+            // 34.4 um, NOT 34.0. The pitch is a property of the PANEL, and two independent sources
+            // agree: the machine table Anycubic's own files carry (198.15 x 123.84 mm, per UVTools
+            // AnycubicFile.cs) and the marketed 9.25" diagonal (which implies 34.59 um). Anycubic's
+            // published build volume (195.84 x 122.4 mm) is the PRINTABLE AREA -- slightly smaller
+            // than the panel -- and dividing that by 5760 makes 34.0 come out exact, which is what
+            // made it look right. Using the printable area as the pitch scales every print by 1.2%.
+            ResinPrinter("Anycubic Photon Mono X 6K", 5760, 3600, 34.4, 245.0),
             ResinPrinter("Anycubic Photon Mono 4K", 3840, 2400, 34.5, 165.0),
             ResinPrinter("Elegoo Saturn 2 (8K)", 7680, 4320, 28.5, 250.0),
             ResinPrinter("Elegoo Saturn (4K)", 3840, 2400, 50.0, 200.0),

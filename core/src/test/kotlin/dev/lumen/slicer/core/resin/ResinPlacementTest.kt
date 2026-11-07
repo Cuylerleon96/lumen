@@ -25,8 +25,8 @@ class ResinPlacementTest {
     fun `the bed centre is half the build area, not the origin`() {
         val (cx, cy) = ResinPlacement.bedCentre(monoX6k)
 
-        assertEquals(97.92f, cx, 0.01f, "195.84 mm wide bed")
-        assertEquals(61.2f, cy, 0.01f, "122.4 mm deep bed")
+        assertEquals(99.072f, cx, 0.01f, "198.144 mm panel / 2")
+        assertEquals(61.92f, cy, 0.01f, "123.84 mm panel / 2")
         assertTrue(cx > 0f && cy > 0f, "a corner-origin bed puts the centre at half the build area")
     }
 

@@ -20,8 +20,10 @@ class ResinEngineJsonTest {
     fun `the printer's panel geometry travels with the settings`() {
         val json = ResinSettings().toEngineJson(monoX6k)
 
-        assertTrue(json.contains("\"display_width\":\"195.84\""), "panel width in mm: $json")
-        assertTrue(json.contains("\"display_height\":\"122.4\""), "panel depth in mm: $json")
+        // The PANEL, not the published printable area: 5760 x 34.4 um = 198.144 mm. The raster has to
+        // cover the whole panel, so this is what the engine must be told.
+        assertTrue(json.contains("\"display_width\":\"198.144\""), "panel width in mm: $json")
+        assertTrue(json.contains("\"display_height\":\"123.84\""), "panel depth in mm: $json")
         assertTrue(json.contains("\"display_pixels_x\":\"5760\""), "panel pixels across: $json")
         assertTrue(json.contains("\"display_pixels_y\":\"3600\""), "panel pixels down: $json")
     }
