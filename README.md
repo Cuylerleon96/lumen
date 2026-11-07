@@ -47,6 +47,22 @@ on the build host / build host before starting engine work (see the
 
 ## Quick decisions locked so far
 - **License:** AGPL-3.0-or-later.
-- **Resin engine source:** PrusaSlicer SLA (not Orca — Orca has none).
+- **Phase-1 base (ADR 0002):** **fork `whoxllm/OrcaMicro`** — OrcaSlicer 2.4.2
+  engine on Android, AGPL, ~950 FDM profiles, clean module split.
+- **Resin engine source (ADR 0001):** PrusaSlicer SLA grafted into that engine.
 - **First resin output format:** SL1 (open) → then CTB, then GOO.
 - **Local-only for now**; no remote/deploy.
+
+## Fork base — OrcaMicro structure (what we extend)
+```
+app/     Kotlin + Jetpack Compose + OpenGL ES 2 (the UI)        → add resin UI
+core/    pure Kotlin: STL, placement, ORCASlicer profiles,      → add resin model
+         settings, G-code parsing (JVM-unit-tested)                types + SL1/CTB writers
+native/  builds OrcaSlicer libslic3r for Android + JNI bridge   → add PrusaSlicer SLA
+         (liborcamicro_engine.so); engine runs in its OWN process  (SLAPrint + OpenVDB)
+docs/    design.md, plan.md (upstream)
+```
+Engine = **OrcaSlicer 2.4.2**, NDK **r27c**, Android 9+/arm64, **no bamboo**, engines
+isolated in a separate process (native crash ≠ app crash). Native build "takes a
+few hours from scratch" → **build host**.
+Reference docs to read upstream: `docs/design.md`, `docs/plan.md`.
