@@ -2,11 +2,22 @@ package dev.lumen.slicer.core.mesh
 
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 data class Vec3(val x: Float, val y: Float, val z: Float) {
     operator fun plus(o: Vec3) = Vec3(x + o.x, y + o.y, z + o.z)
     operator fun minus(o: Vec3) = Vec3(x - o.x, y - o.y, z - o.z)
     operator fun times(s: Float) = Vec3(x * s, y * s, z * s)
+
+    fun dot(o: Vec3): Float = x * o.x + y * o.y + z * o.z
+    fun cross(o: Vec3): Vec3 = Vec3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x)
+    fun length(): Float = sqrt(dot(this))
+
+    /** Unit vector in the same direction; degenerate (near-zero) input falls back to +Z. */
+    fun normalized(): Vec3 {
+        val l = length()
+        return if (l < 1e-12f) Vec3(0f, 0f, 1f) else this * (1f / l)
+    }
 }
 
 /** Axis-aligned bounding box, in millimetres. */

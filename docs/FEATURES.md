@@ -5,9 +5,19 @@ Status marks: **✅ done** · **🚧 in progress** · **🔜 next (P0)** · **�
 Method/reference for each *how* → `docs/research/feature-methods.md`. Feature inventory origin →
 `docs/research/lychee-feature-gap.md`.
 
-_Last updated: 2026-11-06 (initial full inventory)._
+_Last updated: 2026-11-07 (drain-hole drilling landed in `:core`)._
 
 ## Progress log
+- 2026-11-07 — **Drain-hole drilling (D.4) + boolean CSG land in `:core`.** New `Csg` (clean-room
+  BSP boolean: `union`/`subtract`/`intersect`, plus `subtractLocal` which only runs the tree on the
+  triangles near the tool) and `DrainHoles.drill()` (48-gon cylinder bit, 0.5 mm outset so the end cap
+  never lands coplanar with the surface, through-all or blind depth). Evidence: `CsgTest` asserts the
+  volume identities (`V(a−b) = V(a) − V(a∩b)`, union/intersect, cylinder-through-box = πr²h against the
+  *polygonal* section) and `DrainHoleTest` fires rays down each bore — 0 crossings through a drilled
+  hole vs 2 through the solid, and two crossing bores discount the Steinmetz solid (16r³/3) exactly
+  once. **`:core:test` was NOT green at HEAD before this** — `PreviewRendererTest.kt` still declared the
+  fork package (`io.github.whoxllm.orcamicro…`), so the test source set could not compile; fixed.
+  Still todo: tap-to-place touch UI, pre-drill wiring in `ResinBackend`.
 - 2026-11-07 — **SLA engine WORKS end-to-end.** PrusaSlicer **2.9.7 (newest)** `libslic3r` +
   `liblibseqarrange` cross-compiled for arm64 (deps incl. OpenVDB 11, OCCT, **Z3**, nlohmann_json);
   harness `native/sla/sla_cli.cpp` slices a cube → valid SL1 on the emulator; **JNI bridge**
@@ -43,7 +53,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - 📋 **Import OBJ, 3MF, STEP, AMF** (Lychee reads all; we read STL only). — **✅ OBJ + 3MF done**
   (`ObjReader`, `ThreeMfReader`, wired into the loader, normalized to STL); STEP/AMF still todo.
 - 📋 **Mirror**, **Array/duplicate**, **"align to face"/lay-flat**, **planar cut**, **boolean CSG**.
-  — **✅ Mirror X/Y/Z done** (Placement + sheet).
+  — **✅ Mirror X/Y/Z done** (Placement + sheet). — **✅ boolean CSG done** (`Csg`: union / subtract /
+  intersect, in `:core`; the UI entry point is still todo).
 - 📋 **Measure / dimension / text** tools.
 - 💤 **Smooth/interpolate + wall smooth** · emboss · warp.
 
@@ -87,7 +98,10 @@ _Last updated: 2026-11-06 (initial full inventory)._
 ### D.4 Hollowing & drainage
 - 🔜 **Hollowing** via OpenVDB — **2D / 3D / voxel modes** (Lychee), wall thickness, closing distance, quality.
   — **✅ enable + wall thickness + closing distance** wired to the engine; 2D/3D/voxel mode choice still todo.
-- 🔜 **Drain holes** (place/drill, diameter/depth) + **hollow blockers** tab.
+- 🔜 **Drain holes** (place/drill, diameter/depth) — **drilling done in `:core`** (`Csg` boolean +
+  `DrainHoles.drill`, tested); **todo:** tap-to-place touch UI (D.9 tool rail) and pre-drill wiring
+  into `ResinBackend` so a slice picks the holes up.
+- 📋 **Hollow blockers** tab (exclude a region from hollowing).
 - 📋 **Voxel pocket detection** (min pocket side/voxels, remove-below-holes, without-holes) · infill lattice · fill-holes · editable hollow voxels (tube brush).
 ### D.5 Anti-aliasing & masks
 - 🚧 **Anti-aliasing** (grayscale edge levels) — `AntiAliaser` edge-softening pass applied in the
