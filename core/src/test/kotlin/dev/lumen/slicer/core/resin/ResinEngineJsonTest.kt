@@ -42,7 +42,9 @@ class ResinEngineJsonTest {
         assertTrue(json.contains("\"support_points_density_relative\":\"80\""))
         assertTrue(json.contains("\"support_pillar_diameter\":\"1.2\""))
         assertTrue(json.contains("\"support_head_front_diameter\":\"0.4\""))
-        assertTrue(json.contains("\"support_object_xy_distance\":\"0.3\""))
+        // support_object_elevation, not support_object_xy_distance: the latter does not exist in
+        // PrusaSlicer's SLA config, so the engine reported "Unknown option" and dropped it silently.
+        assertTrue(json.contains("\"support_object_elevation\":\"0.3\""))
     }
 
     @Test

@@ -141,6 +141,7 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
             onChange = viewModel::setPlacement,
             onCenter = viewModel::centerModel,
             onFit = viewModel::fitToBuildVolume,
+            onLayFlat = viewModel::layFlat,
             onDismiss = { showPlacement = false },
         )
     }
@@ -188,8 +189,10 @@ fun PlacementSheet(
     onChange: (Placement) -> Unit,
     onCenter: () -> Unit,
     onFit: () -> Unit,
+    onLayFlat: () -> Unit,
     onDismiss: () -> Unit,
-    /** Resin places the model on the origin-centred SLA bed, so only rotate/scale apply. */
+    /** Resin's bed is corner-origin in the engine's frame, so the engine path centres the model on
+     *  the bed itself and only rotate/scale apply here. */
     showPosition: Boolean = true,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -213,6 +216,14 @@ fun PlacementSheet(
             RotateRow("Z", p.rotationZ) { onChange(p.copy(rotationZ = it)) }
             LabeledSlider("Turn on the bed", "${p.rotationZ.roundToInt()}°", p.rotationZ, -180f..180f) {
                 onChange(p.copy(rotationZ = it.roundToInt().toFloat()))
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onLayFlat) { Text("Lay flat") }
+                Text(
+                    "rests it on its largest flat face",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             HorizontalDivider()
             Text("Mirror", style = MaterialTheme.typography.labelLarge)

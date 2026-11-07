@@ -126,7 +126,12 @@ data class ResinSettings(
         append(",\"support_points_density_relative\":\"$supportDensityPercent\"")
         append(",\"support_head_front_diameter\":\"$supportContactDiameterMm\"")
         append(",\"support_pillar_diameter\":\"$supportPillarDiameterMm\"")
-        append(",\"support_object_xy_distance\":\"$supportObjectGapMm\"")
+        // PrusaSlicer's SLA config has NO support/object XY-distance key (checked against the
+        // vendored PrintConfig: the distance keys are support_base_safety_distance and
+        // support_max_pillar_link_distance, neither of which is this). The real concept for "keep the
+        // supports off the model" is support_object_elevation -- how far the supports lift the object.
+        // The old key was invented, so the engine reported "Unknown option" and dropped it silently.
+        append(",\"support_object_elevation\":\"$supportObjectGapMm\"")
         if (printer != null) {
             append(",\"display_width\":\"${printer.buildWidthMm}\"")
             append(",\"display_height\":\"${printer.buildDepthMm}\"")

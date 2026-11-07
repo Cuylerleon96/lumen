@@ -15,6 +15,7 @@ import dev.lumen.slicer.core.mesh.StlFormatException
 import dev.lumen.slicer.core.mesh.StlReader
 import dev.lumen.slicer.core.mesh.StlWriter
 import dev.lumen.slicer.core.mesh.ThreeMfReader
+import dev.lumen.slicer.core.mesh.MeshOrient
 import dev.lumen.slicer.core.profiles.Catalog
 import dev.lumen.slicer.core.profiles.PresetRef
 import dev.lumen.slicer.core.profiles.PresetType
@@ -395,6 +396,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val model = _state.value.model ?: return
         val bed = _state.value.bed ?: return
         setPlacement(model.placement.copy(centerX = bed.centerX, centerY = bed.centerY))
+    }
+
+    /**
+     * Re-orient the model to rest on its largest flat face ([MeshOrient]), the way a person turns a
+     * print over in their hand to find the big flat bit.
+     *
+     * The rotation is baked into the mesh, so the placement's rotation is cleared — leaving the old
+     * angles in place would tilt the model straight back off the plate it was just laid on. Scale,
+     * mirror and position are preserved.
+     */
+    fun layFlat() {
+        val model = _state.value.model ?: return
+        val flat = MeshOrient.layFlat(model.mesh)
+        viewModelScope.launch {
+            setModel(model.name, flat, model.placement.copy(rotationX = 0f, rotationY = 0f, rotationZ = 0f))
+        }
     }
 
     /** Scale the model down so it fits the build volume (a no-op if it already fits). */
