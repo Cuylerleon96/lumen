@@ -140,6 +140,17 @@ data class ResinSettings(
             append(",\"display_height\":\"${printer.buildDepthMm}\"")
             append(",\"display_pixels_x\":\"${printer.resolutionX}\"")
             append(",\"display_pixels_y\":\"${printer.resolutionY}\"")
+            // bed_shape is the printable POLYGON the engine places objects against; display_* only
+            // describe the panel and the raster. Without it the bed is degenerate, so the object is
+            // placed at the bed's corner and clipped -- measured on device, the ink sat in the
+            // bottom-left with left=0 bottom=0, identically for any mesh coordinates we passed.
+            //
+            // PrusaSlicer's SLA printer profiles centre bed_shape on (0,0) (FDM beds are corner-origin
+            // -- that difference is what makes this easy to get wrong). A model centred on the origin
+            // is therefore centred on the bed, which is what ResinPlacement assumes.
+            val halfW = printer.buildWidthMm / 2.0
+            val halfD = printer.buildDepthMm / 2.0
+            append(",\"bed_shape\":\"${-halfW}x${-halfD},${halfW}x${-halfD},${halfW}x${halfD},${-halfW}x${halfD}\"")
         }
         append('}')
     }

@@ -3,48 +3,57 @@ package dev.lumen.slicer.core.resin
 import dev.lumen.slicer.core.mesh.Mesh
 
 /**
- * Where a resin model must sit on the bed.
+ * Where a resin model sits in the SLA engine's frame.
  *
- * The SLA engine's bed spans `0..width × 0..depth` in mm with its origin at a **corner**, not the
- * centre — which is what the FDM bed convention leads you to assume, and what the old slice path
- * assumed (`centerX = 0f, centerY = 0f` with a comment claiming the bed was centred on the origin).
- * A mesh centred on the origin therefore lands in the corner with its negative half off the plate,
- * and the layers above the clipped part come out **empty** — which reads like a support or engine
- * failure rather than a placement one.
+ * **The SLA bed is centred on the origin.** PrusaSlicer's SLA printer profiles carry a `bed_shape`
+ * polygon centred on (0,0); FDM beds are corner-origin instead, and that difference is the trap. A
+ * model centred on the origin is centred on the bed, so [bedCentre] is the origin.
  *
- * Verified by slicing one mesh twice with only the translation changed: centred on the origin the SL1
- * held 700 KB of layers, the body was clipped and layers 146-179 were empty; centred on the bed it
- * held 3.0 MB with every layer populated.
+ * The history is worth keeping, because the obvious reading of the evidence was wrong twice:
+ *  - The engine's bed is defined by **`bed_shape`**, not by `display_width`/`display_height` (those
+ *    only describe the panel and the raster size). The app sent the display keys but no `bed_shape`,
+ *    so the bed was degenerate, the object was placed at the bed's corner and **clipped**.
+ *  - That clipping looked exactly like a placement bug, and a standalone CLI harness appeared to
+ *    confirm it: a mesh centred on the origin came out clipped into the corner (700 KB of layers)
+ *    while the same mesh translated to (w/2, h/2) came out complete (3.0 MB). The harness was also
+ *    running without a `bed_shape`, so it was demonstrating the same missing key, not the placement.
+ *  - On device the tell was that BOTH placements produced byte-identical output with the ink jammed
+ *    into the bottom-left (margins left=0, bottom=0): the engine was placing the object itself and
+ *    ignoring our coordinates entirely. An earlier test of this that compared populated LAYER COUNTS
+ *    passed while the bug was present -- clipping removes material *within* layers, not layers.
  *
- * The naive [MeshRasterizer] fallback never had this bug because it centres each raster on the mesh's
- * own bounds — so the placement only has to be right for the engine, and the two paths agree.
+ * With `bed_shape` sent, the bed is the panel centred on the origin, and the model is centred by
+ * being at the origin. [margins] and [isOnBed] therefore measure against a CENTRED bed.
  */
 object ResinPlacement {
 
-    /** Centre of [printer]'s bed in the engine's frame, as (x, y) in mm. */
-    fun bedCentre(printer: ResinPrinter): Pair<Float, Float> =
-        (printer.buildWidthMm / 2.0).toFloat() to (printer.buildDepthMm / 2.0).toFloat()
+    /** Centre of the engine's bed in its own frame — the origin, because the SLA bed is centred. */
+    fun bedCentre(printer: ResinPrinter): Pair<Float, Float> = 0f to 0f
 
-    /** Footprint margins (left, right, front, back) in mm for a [mesh] on [printer]'s bed. */
+    /** Footprint margins (left, right, front, back) in mm for a [mesh] on [printer]'s centred bed. */
     fun margins(mesh: Mesh, printer: ResinPrinter): FloatArray {
         val b = mesh.bounds()
+        val halfW = (printer.buildWidthMm / 2.0).toFloat()
+        val halfD = (printer.buildDepthMm / 2.0).toFloat()
         return floatArrayOf(
-            b.min.x,
-            (printer.buildWidthMm - b.max.x).toFloat(),
-            b.min.y,
-            (printer.buildDepthMm - b.max.y).toFloat(),
+            b.min.x + halfW,
+            halfW - b.max.x,
+            b.min.y + halfD,
+            halfD - b.max.y,
         )
     }
 
     /**
-     * True when [mesh]'s footprint sits inside the bed with its base on the plate — i.e. the slice
-     * will not silently lose material off the edge.
+     * True when [mesh]'s footprint sits inside the centred bed with its base on the plate — i.e. the
+     * slice will not silently lose material off the edge.
      */
     fun isOnBed(mesh: Mesh, printer: ResinPrinter, epsMm: Float = 0.01f): Boolean {
         if (mesh.isEmpty) return false
         val b = mesh.bounds()
-        return b.min.x >= -epsMm && b.min.y >= -epsMm &&
-            b.max.x <= printer.buildWidthMm + epsMm && b.max.y <= printer.buildDepthMm + epsMm &&
+        val halfW = (printer.buildWidthMm / 2.0).toFloat()
+        val halfD = (printer.buildDepthMm / 2.0).toFloat()
+        return b.min.x >= -halfW - epsMm && b.max.x <= halfW + epsMm &&
+            b.min.y >= -halfD - epsMm && b.max.y <= halfD + epsMm &&
             kotlin.math.abs(b.min.z) <= epsMm
     }
 }

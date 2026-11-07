@@ -22,12 +22,13 @@ class ResinPlacementTest {
     private val monoX = ResinPrinter.byName("Anycubic Photon Mono X")!!
 
     @Test
-    fun `the bed centre is half the build area, not the origin`() {
+    fun `the bed centre is the origin, because the SLA bed is centred`() {
         val (cx, cy) = ResinPlacement.bedCentre(monoX6k)
 
-        assertEquals(99.072f, cx, 0.01f, "198.144 mm panel / 2")
-        assertEquals(61.92f, cy, 0.01f, "123.84 mm panel / 2")
-        assertTrue(cx > 0f && cy > 0f, "a corner-origin bed puts the centre at half the build area")
+        // PrusaSlicer's SLA profiles carry a bed_shape centred on (0,0) -- FDM beds are corner-origin,
+        // and assuming the FDM convention here is what made the bed degenerate and clipped the model.
+        assertEquals(0f, cx, 0.001f)
+        assertEquals(0f, cy, 0.001f)
     }
 
     @Test
@@ -44,17 +45,21 @@ class ResinPlacementTest {
     }
 
     @Test
-    fun `a model centred on the origin is off the plate on a corner-origin bed`() {
-        // The bug, captured: this is what the app used to do.
+    fun `a model centred on the origin sits on the centred bed`() {
+        // The bug, captured: a mesh at the origin on a CORNER-origin bed hangs off it, which is what
+        // the engine did when bed_shape was missing. With bed_shape sent the bed is centred, so the
+        // same mesh is fine -- and this test is the difference between the two conventions.
         val model = MeshPrimitives.box(40f, 30f, 20f, 0f, 0f, 10f)
 
         val placed = Placement(centerX = 0f, centerY = 0f).place(model)
 
-        assertFalse(
+        assertTrue(
             ResinPlacement.isOnBed(placed, monoX6k),
-            "a model centred on the origin hangs off a corner-origin bed — this is the bug",
+            "a model at the origin belongs on a bed centred on the origin",
         )
-        assertTrue(ResinPlacement.margins(placed, monoX6k)[0] < 0f, "its left margin is negative")
+        val m = ResinPlacement.margins(placed, monoX6k)
+        assertEquals(m[0], m[1], 0.01f, "left and right margins must match")
+        assertEquals(m[2], m[3], 0.01f, "front and back margins must match")
     }
 
     @Test

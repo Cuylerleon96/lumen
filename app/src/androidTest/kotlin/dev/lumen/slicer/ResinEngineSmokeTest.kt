@@ -42,7 +42,7 @@ class ResinEngineSmokeTest {
         // The SL1 raster is TRANSPOSED relative to the panel: the PNG's WIDTH is the panel's Y pixel
         // count and its height is the X count. Evidence across two panels: the engine default
         // (display_pixels 2560x1440) comes out 1440x2560, and a 3840x2400 panel comes out 2400x3840.
-        val sl1 = slice(box(40f, 30f, 20f), centred = true)
+        val sl1 = slice(box(40f, 30f, 20f))
 
         val (w, h) = firstLayerSize(sl1)
         assertEquals("raster width is the panel's Y count", monoX6k.resolutionY, w)
@@ -54,8 +54,8 @@ class ResinEngineSmokeTest {
         // The falsifiable form: same model, different printer, different raster. If display_* were
         // still being dropped, both slices would come out at the engine default (1440x2560) and match.
         val mono4k = ResinPrinter.byName("Anycubic Photon Mono 4K")!!
-        val small = firstLayerSize(slice(box(20f, 20f, 10f), centred = true, printer = mono4k))
-        val large = firstLayerSize(slice(box(20f, 20f, 10f), centred = true, printer = monoX6k))
+        val small = firstLayerSize(slice(box(20f, 20f, 10f), printer = mono4k))
+        val large = firstLayerSize(slice(box(20f, 20f, 10f), printer = monoX6k))
 
         assertTrue("panels must differ: $small vs $large", small != large)
         assertEquals("4K raster width", 2400, small.first)
@@ -65,30 +65,19 @@ class ResinEngineSmokeTest {
     }
 
     @Test
-    fun centringOnTheBedKeepsTheWholeModel() {
-        // The FIRST version of this test was wrong twice over, which is worth recording:
-        //  1. it compared populated LAYER COUNTS (535 vs 535) -- clipping removes material *within*
-        //     layers, not layers themselves;
-        //  2. it compared ARCHIVE SIZE, which came out byte-identical (881813 vs 881813) -- so the
-        //     model lands in the same place in the raster whichever coordinates we hand the engine.
-        //     (The standalone CLI harness DOES show the difference, so the engine is not arranging;
-        //     the app's own path evidently normalises it. The margins below are printed so the
-        //     behaviour is visible rather than assumed.)
-        // The discriminating check is whether the ink touches a plate edge -- i.e. is anything clipped.
-        val centred = slice(box(40f, 30f, 20f), centred = true)
-        val atOrigin = slice(box(40f, 30f, 20f), centred = false)
+    fun theAppSliceIsNotClipped() {
+        // With bed_shape sent, the bed is the panel centred on the origin and a model at the origin is
+        // centred on the plate. This asserts the requirement directly: the ink must not touch a plate
+        // edge. The previous version compared two placements -- origin vs panel-centre -- and was
+        // useless once bed_shape arrived, because both are then the same point (the origin). It also
+        // measured two quantities that cannot move: populated layer count (clipping removes material
+        // WITHIN layers) and archive size (byte-identical either way, because the engine placed the
+        // object itself). Only the edge measurement discriminates.
+        val sl1 = slice(box(40f, 30f, 20f))
 
-        // println does not reach logcat from an instrumentation test; Log.i does. Read it with
-        // `adb logcat -d -s ResinTest:I`.
-        android.util.Log.i(
-            "ResinTest",
-            "margins centred=${margins(midLayer(centred))} origin=${margins(midLayer(atOrigin))} " +
-                "sizes=${centred.length()}/${atOrigin.length()}",
-        )
-        assertFalse(
-            "the app's own slice must not touch a plate edge",
-            touchesEdge(midLayer(centred)),
-        )
+        val m = margins(midLayer(sl1))
+        android.util.Log.i("ResinTest", "margins=$m (left,right,top,bottom; 0 = touching)")
+        assertFalse("the app's slice must not touch a plate edge (margins=$m)", touchesEdge(midLayer(sl1)))
     }
 
     // ---------------------------------------------------------------- helpers
@@ -134,9 +123,10 @@ class ResinEngineSmokeTest {
         return listOf(minX, w - 1 - maxX, minY, h - 1 - maxY)
     }
 
-    private fun slice(mesh: Mesh, centred: Boolean, printer: ResinPrinter = monoX6k): File {
+    private fun slice(mesh: Mesh, printer: ResinPrinter = monoX6k): File {
         val settings = ResinSettings(layerHeightMm = 0.05)
-        val (cx, cy) = if (centred) ResinPlacement.bedCentre(printer) else 0f to 0f
+        // bedCentre is the origin: the SLA bed is centred on (0,0), and we now send bed_shape to say so.
+        val (cx, cy) = ResinPlacement.bedCentre(printer)
         val placed = Placement(centerX = cx, centerY = cy).place(mesh)
 
         val dir = File(context.cacheDir, "resin-smoke").apply { mkdirs() }

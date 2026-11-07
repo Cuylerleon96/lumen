@@ -26,6 +26,10 @@ class ResinEngineJsonTest {
         assertTrue(json.contains("\"display_height\":\"123.84\""), "panel depth in mm: $json")
         assertTrue(json.contains("\"display_pixels_x\":\"5760\""), "panel pixels across: $json")
         assertTrue(json.contains("\"display_pixels_y\":\"3600\""), "panel pixels down: $json")
+        // bed_shape is what the engine PLACES against; display_* only describe the panel. Omitting it
+        // left the bed degenerate and the object was placed at its corner and clipped. Centred on the
+        // origin, matching PrusaSlicer's SLA printer profiles.
+        assertTrue(json.contains("\"bed_shape\":\"-99.072x-61.92,99.072x-61.92,99.072x61.92,-99.072x61.92\""), "centred bed: $json")
     }
 
     @Test

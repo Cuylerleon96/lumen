@@ -606,10 +606,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val out = withContext(Dispatchers.Default) {
                     val base = model.name.substringBeforeLast('.').ifBlank { "print" }
                     val sl1 = File(app.cacheDir, "$base.sl1")
-                    // The SLA engine's bed has its origin at a CORNER, not the centre (see
-                    // ResinPlacement): a mesh centred on the origin lands in the corner with its
-                    // negative half clipped off the plate, and the layers above the clipped part come
-                    // out empty. So centre it on the bed in the engine's own frame.
+                    // The SLA bed is CENTRED on the origin (PrusaSlicer's SLA profiles carry a
+                    // bed_shape centred on (0,0), unlike FDM's corner-origin beds), so a mesh centred
+                    // on the origin is centred on the plate. The engine places against bed_shape --
+                    // which we now send; without it the bed was degenerate and the object was placed
+                    // at its corner and clipped, no matter what coordinates we passed.
                     val (bedCx, bedCy) = ResinPlacement.bedCentre(printer)
                     val resinPlacement = model.placement.copy(centerX = bedCx, centerY = bedCy)
                     val placedMesh = resinPlacement.place(model.mesh)
