@@ -1,8 +1,8 @@
 # QC report — mobile slicer app
 
-_First QC pass, 2026-11-06. Evidence: real builds + emulator run on the build host (not self-reported)._
+_First QC pass, 2026-11-06. Evidence: real builds + an emulator run (not self-reported)._
 
-## Build & tests (build host)
+## Build & tests
 - **FDM engine:** `liborcamicro_engine.so` (18 MB, arm64) — BUILD SUCCESS.
 - **App APK:** `app-debug.apk` (52 MB, engine `.so` packaged) — BUILD SUCCESSFUL.
 - **Unit tests:** `:core:test` → **36 tests, 0 failures, 0 errors** (2 skipped = `OrcaProfilesTest`,

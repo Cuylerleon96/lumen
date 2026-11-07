@@ -1,6 +1,6 @@
 # REA analysis of Lychee (RE notes)
 
-**Tool:** `rea-agents` 6.8.0 (npm) on the build host (Node 24). Command: `rea analyze /opt/LycheeSlicer`
+**Tool:** `rea-agents` 6.8.0 (npm, Node 24). Command: `rea analyze /opt/LycheeSlicer`
 + `rea analyze-javascript-application`. Lychee = CEF app (Chromium Embedded Framework, `libcef.so`).
 
 ## What REA established
@@ -25,7 +25,8 @@
   algorithms from **open references** (PrusaSlicer/Encrust/mslicer), not from Lychee's binary.
 
 ## Status / caveats
-- REA CLI works on the build host (`~/.local/bin/{node,npm,npx}`, Node 24; `npx rea-agents@latest`).
+- REA CLI works from a user-local Node install (`~/.local/bin/{node,npm,npx}`, Node 24;
+  `npx rea-agents@latest`).
 - Full `analyze` on the 100 MB+ app is **slow** (progress stalled mid-parse in-session; ~31/62 files).
   Re-run in the background when needed. High-value REA uses going forward: **capture Lychee's exact
   output bytes** (CTB/GOO) to validate our writers, and **`analyze-javascript-application`** for the

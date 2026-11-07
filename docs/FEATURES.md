@@ -69,7 +69,7 @@ _Last updated: 2026-11-07 (drain-hole drilling landed in `:core`)._
 - 💤 **Smooth/interpolate + wall smooth** · emboss · warp.
 
 ## C. FDM (via OrcaSlicer engine) — full page surface: `docs/research/complete-feature-surface.md`
-- ✅ **Orca `libslic3r` engine** cross-compiled for arm64 (build in flight on the build host).
+- ✅ **Orca `libslic3r` engine** cross-compiled for arm64.
 - ✅ ~950 Orca printer profiles (bundled).
 - ✅ Print/filament/process settings editor (the tabbed `SettingsScreen`).
 - ✅ Slice → G-code; layer/toolpath preview; print time + filament estimate.
@@ -153,7 +153,7 @@ _Last updated: 2026-11-07 (drain-hole drilling landed in `:core`)._
 
 ## G. Build / release / infra
 - ✅ Repo scaffold, ADRs, research docs, licensing (AGPL-3.0).
-- 🚧 **FDM engine build** (build host) → then `:core:test` + `assembleDebug` + emulator screenshots.
+- 🚧 **FDM engine build** → then `:core:test` + `assembleDebug` + emulator screenshots.
 - 📋 CI (engine-only build + tests); signed releases; in-app self-update.
 - 📋 iOS build (same engine, SwiftUI).
 - 📋 i18n/localization.

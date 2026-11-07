@@ -8,7 +8,7 @@ Serves a build directory (default ~/mslicer_updates) over HTTP, exposing:
 The app's About -> "Check for updates" fetches info.json, downloads app.apk, verifies the
 sha256 and installs it. Local only — bind on an address the phone can reach.
 
-Run on the build host (the build host):  python3 server/update_server.py --port 8799
+Run on the build host:  python3 server/update_server.py --port 8799
 """
 import argparse, functools, http.server, os
 

@@ -13,6 +13,6 @@
   - Resin is proven path (Voronoi supports, hollowing, SL1 output) on day one.
   - Requires **OpenVDB** (hollowing) — cannot drop it like OrcaMicro did.
   - AGPL-3.0 throughout (already accepted).
-  - Build is larger; defer to the build host build host (disk + CPU).
+  - Build is larger; defer to a dedicated build host (disk + CPU).
 - **Alternatives rejected:** (a) Orca-only + write SLA from scratch — huge;
   (b) closed-source resin engine — against project goal.

@@ -18,7 +18,7 @@ data class UpdateInfo(
 )
 
 /**
- * In-app update from the build host (the build host): fetch a manifest, download the APK, verify its
+ * In-app update from the build host: fetch a manifest, download the APK, verify its
  * sha256 and hand it to the package installer. The host publishes `update/info.json` + `update/app.apk`
  * (see `server/`). No app store involved.
  */

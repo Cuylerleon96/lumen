@@ -1,6 +1,6 @@
 # Lychee Slicer — feature/setting inventory vs. ours (gap analysis)
 
-**Method:** Lychee Slicer is installed on the build host at `/opt/LycheeSlicer` (CEF app + native
+**Method:** Lychee Slicer is installed at `/opt/LycheeSlicer` (CEF app + native
 engine `libEmeraude.so`, Chitubox CTB SDK `libCTBAdapter.so`/`libCtbSDKFormat.so`). Its settings and
 tool vocabulary were extracted from the bundled UI bundle `bin/renderUI.js` (19 MB) + `bin/renderFile.js`
 token frequency analysis, and the format list from extension frequency. Not from docs — from the
