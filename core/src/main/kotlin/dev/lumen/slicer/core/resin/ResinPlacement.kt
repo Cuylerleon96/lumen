@@ -5,55 +5,58 @@ import dev.lumen.slicer.core.mesh.Mesh
 /**
  * Where a resin model sits in the SLA engine's frame.
  *
- * **The SLA bed is centred on the origin.** PrusaSlicer's SLA printer profiles carry a `bed_shape`
- * polygon centred on (0,0); FDM beds are corner-origin instead, and that difference is the trap. A
- * model centred on the origin is centred on the bed, so [bedCentre] is the origin.
+ * **Centre it on half the panel.** The engine's raster covers world (0,0) → (panelW, panelH) — a
+ * corner-origin mapping — so a model centred on the origin hangs off it and is silently clipped.
  *
- * The history is worth keeping, because the obvious reading of the evidence was wrong twice:
- *  - The engine's bed is defined by **`bed_shape`**, not by `display_width`/`display_height` (those
- *    only describe the panel and the raster size). The app sent the display keys but no `bed_shape`,
- *    so the bed was degenerate, the object was placed at the bed's corner and **clipped**.
- *  - That clipping looked exactly like a placement bug, and a standalone CLI harness appeared to
- *    confirm it: a mesh centred on the origin came out clipped into the corner (700 KB of layers)
- *    while the same mesh translated to (w/2, h/2) came out complete (3.0 MB). The harness was also
- *    running without a `bed_shape`, so it was demonstrating the same missing key, not the placement.
- *  - On device the tell was that BOTH placements produced byte-identical output with the ink jammed
- *    into the bottom-left (margins left=0, bottom=0): the engine was placing the object itself and
- *    ignoring our coordinates entirely. An earlier test of this that compared populated LAYER COUNTS
- *    passed while the bug was present -- clipping removes material *within* layers, not layers.
- *
- * With `bed_shape` sent, the bed is the panel centred on the origin, and the model is centred by
- * being at the origin. [margins] and [isOnBed] therefore measure against a CENTRED bed.
+ * Measured, because reading the source and the conventions got this wrong twice:
+ *  - PrusaSlicer's SLA *profiles* carry a `bed_shape` centred on (0,0) (FDM beds are corner-origin),
+ *    which is why the original code's comment claimed the bed was centred on the origin.
+ *  - Slicing a marker with features at world +40 mm (X) and +30 mm (Y) produced ink only in world
+ *    x∈[0, 42.7], y∈[0, 36.2]: the positive quadrant, everything negative clipped. That is a
+ *    corner-origin raster regardless of the declared bed_shape.
+ *  - Two earlier test versions passed while the bug was live because they measured quantities that
+ *    cannot move: populated layer count (clipping removes material *within* layers) and archive size
+ *    (byte-identical, because the engine places the object itself). Only ink touching a plate edge
+ *    discriminates.
  */
 object ResinPlacement {
 
-    /** Centre of the engine's bed in its own frame — the origin, because the SLA bed is centred. */
-    fun bedCentre(printer: ResinPrinter): Pair<Float, Float> = 0f to 0f
+    /**
+     * Centre of the engine's bed in its own frame.
+     *
+     * **Half the panel.** Measured, not read: slicing a marker with features at world +40 mm (X) and
+     * +30 mm (Y) produced ink only in the region world x∈[0, 42.7] and y∈[0, 36.2] — the positive
+     * quadrant, everything negative clipped. So the raster covers world (0,0)→(panelW, panelH): a
+     * corner-origin mapping, and a model centred on the origin hangs off it. Placing at half the panel
+     * puts the model's centre at the middle of that raster.
+     *
+     * (PrusaSlicer's SLA *profiles* carry a bed_shape centred on (0,0) — which is why the original
+     * code's comment claimed the bed was centred on the origin — but the raster mapping we actually
+     * get back is corner-origin. The measurement wins over the convention.)
+     */
+    fun bedCentre(printer: ResinPrinter): Pair<Float, Float> =
+        (printer.buildWidthMm / 2.0).toFloat() to (printer.buildDepthMm / 2.0).toFloat()
 
-    /** Footprint margins (left, right, front, back) in mm for a [mesh] on [printer]'s centred bed. */
+    /** Footprint margins (left, right, front, back) in mm for a [mesh] on [printer]'s bed. */
     fun margins(mesh: Mesh, printer: ResinPrinter): FloatArray {
         val b = mesh.bounds()
-        val halfW = (printer.buildWidthMm / 2.0).toFloat()
-        val halfD = (printer.buildDepthMm / 2.0).toFloat()
         return floatArrayOf(
-            b.min.x + halfW,
-            halfW - b.max.x,
-            b.min.y + halfD,
-            halfD - b.max.y,
+            b.min.x,
+            (printer.buildWidthMm - b.max.x).toFloat(),
+            b.min.y,
+            (printer.buildDepthMm - b.max.y).toFloat(),
         )
     }
 
     /**
-     * True when [mesh]'s footprint sits inside the centred bed with its base on the plate — i.e. the
-     * slice will not silently lose material off the edge.
+     * True when [mesh]'s footprint sits inside the bed with its base on the plate — i.e. the slice
+     * will not silently lose material off the edge.
      */
     fun isOnBed(mesh: Mesh, printer: ResinPrinter, epsMm: Float = 0.01f): Boolean {
         if (mesh.isEmpty) return false
         val b = mesh.bounds()
-        val halfW = (printer.buildWidthMm / 2.0).toFloat()
-        val halfD = (printer.buildDepthMm / 2.0).toFloat()
-        return b.min.x >= -halfW - epsMm && b.max.x <= halfW + epsMm &&
-            b.min.y >= -halfD - epsMm && b.max.y <= halfD + epsMm &&
+        return b.min.x >= -epsMm && b.min.y >= -epsMm &&
+            b.max.x <= printer.buildWidthMm + epsMm && b.max.y <= printer.buildDepthMm + epsMm &&
             kotlin.math.abs(b.min.z) <= epsMm
     }
 }

@@ -22,13 +22,13 @@ class ResinPlacementTest {
     private val monoX = ResinPrinter.byName("Anycubic Photon Mono X")!!
 
     @Test
-    fun `the bed centre is the origin, because the SLA bed is centred`() {
+    fun `the bed centre is half the panel`() {
         val (cx, cy) = ResinPlacement.bedCentre(monoX6k)
 
-        // PrusaSlicer's SLA profiles carry a bed_shape centred on (0,0) -- FDM beds are corner-origin,
-        // and assuming the FDM convention here is what made the bed degenerate and clipped the model.
-        assertEquals(0f, cx, 0.001f)
-        assertEquals(0f, cy, 0.001f)
+        // Measured: the raster covers world (0,0)->(panelW, panelH), so the middle of it is panel/2.
+        // A model centred on the origin hangs off the corner and is silently clipped.
+        assertEquals(99.072f, cx, 0.01f, "198.144 mm panel / 2")
+        assertEquals(61.92f, cy, 0.01f, "123.84 mm panel / 2")
     }
 
     @Test
@@ -45,18 +45,27 @@ class ResinPlacementTest {
     }
 
     @Test
-    fun `a model centred on the origin sits on the centred bed`() {
-        // The bug, captured: a mesh at the origin on a CORNER-origin bed hangs off it, which is what
-        // the engine did when bed_shape was missing. With bed_shape sent the bed is centred, so the
-        // same mesh is fine -- and this test is the difference between the two conventions.
+    fun `a model centred on the origin is off the plate`() {
+        // The bug, captured: this is the state the code was in when the model was clipped into the
+        // raster's corner. The raster is corner-origin, so the origin is its corner, not its middle.
         val model = MeshPrimitives.box(40f, 30f, 20f, 0f, 0f, 10f)
 
         val placed = Placement(centerX = 0f, centerY = 0f).place(model)
 
-        assertTrue(
+        assertFalse(
             ResinPlacement.isOnBed(placed, monoX6k),
-            "a model at the origin belongs on a bed centred on the origin",
+            "the origin is the corner of a corner-origin raster — this is the clipping bug",
         )
+    }
+
+    @Test
+    fun `a model placed at half the panel sits on the plate with even margins`() {
+        val model = MeshPrimitives.box(40f, 30f, 20f, 0f, 0f, 10f)
+
+        val (cx, cy) = ResinPlacement.bedCentre(monoX6k)
+        val placed = Placement(centerX = cx, centerY = cy).place(model)
+
+        assertTrue(ResinPlacement.isOnBed(placed, monoX6k), "must be fully on the plate")
         val m = ResinPlacement.margins(placed, monoX6k)
         assertEquals(m[0], m[1], 0.01f, "left and right margins must match")
         assertEquals(m[2], m[3], 0.01f, "front and back margins must match")
