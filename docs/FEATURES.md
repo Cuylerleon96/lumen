@@ -8,6 +8,13 @@ Method/reference for each *how* → `docs/research/feature-methods.md`. Feature 
 _Last updated: 2026-11-06 (initial full inventory)._
 
 ## Progress log
+- 2026-11-07 — **SLA engine WORKS end-to-end.** PrusaSlicer **2.9.7 (newest)** `libslic3r` +
+  `liblibseqarrange` cross-compiled for arm64 (deps incl. OpenVDB 11, OCCT, **Z3**, nlohmann_json);
+  harness `native/sla/sla_cli.cpp` slices a cube → valid SL1 on the emulator; **JNI bridge**
+  `libsla_engine.so` (`SlaEngine.nativeSlice`) packaged in the app + **loads** (verified via
+  `nativeloader` logcat); `ResinBackend` prefers the engine; `sliceResin()` routes through it.
+  **In-app update system** (Updater.kt + About UI + `server/{update_server.py,publish.sh}`).
+  Dark `AppTheme`. App APK builds (~110 MB, both engines).
 - 2026-11-06 — FDM engine built (arm64 `.so`); **app APK builds**; `:core:test` **36 tests green**;
   app **runs** on emulator (picker + resin workspace). P0 **motion settings** added + tested.
   **REA** (reverse-engineering toolkit) installed on the build host; Lychee app structure mapped
@@ -23,7 +30,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 ## A. App shell & UX
 - ✅ **Technology picker (FDM vs Resin)** on first launch, persisted, switchable.
 - ✅ **Shared `PlateShell`** (top bar, bottom bar, Slice FAB, 3D plate, snackbar) for both sides.
-- ✅ Themed (`OrcaMicroTheme`, dark/light + dynamic color).
+- ✅ Themed (dark-first `AppTheme` per `docs/design-language.md`).
+- ✅ **In-app update system** (About → Check for updates; `server/` publishes from the build host).
 - 🔜 **FDM-side "switch slicer"** entry (only resin has it today).
 - 📋 Undo/redo across edits; multi-model plate (multiple objects on one plate).
 - 📋 Onboarding / first-run tips; units + language settings (i18n).
@@ -49,10 +57,10 @@ _Last updated: 2026-11-06 (initial full inventory)._
 
 ## D. Resin (MSLA) — the big build
 ### D.1 Engine
-- 🚧 **PrusaSlicer SLA engine** (`SLAPrint` + `sla::SupportTree` + OpenVDB) as a **second `.so`**
-  — ADR 0003 option **B**. PrusaSlicer 2.8.1 cloned; dedicated dep build (`native/sla/build-sla-deps.sh`
-  → `prefix-sla`) running on the build host. Feasibility proven (toolchain OK; needs its own Eigen/Boost/etc.).
-  (Currently a naive `MeshRasterizer` stands in.)
+- ✅ **PrusaSlicer SLA engine** (`SLAPrint` + `sla::SupportTree` + OpenVDB) as a **second `.so`**
+  — ADR 0003 option **B**. **PrusaSlicer 2.9.7 (newest)** cross-compiled for arm64; JNI bridge
+  `libsla_engine.so` (`SlaEngine.nativeSlice(in, out, settingsJson)`); `ResinBackend` prefers it.
+  Harness `native/sla/sla_cli.cpp` proves a cube → valid SL1 (90 layers) on the emulator.
 - ✅ **SL1 writer** (config.ini + per-layer grayscale PNG), streaming.
 - ✅ Platform-free grayscale **PNG encoder**.
 ### D.2 Print settings
