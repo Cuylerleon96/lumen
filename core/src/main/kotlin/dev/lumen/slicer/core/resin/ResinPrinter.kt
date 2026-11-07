@@ -10,6 +10,8 @@ enum class ResinFormat(val ext: String, val mime: String) {
     SL1("sl1", "application/zip"),
     /** Elegoo GOO (chunked RLE). */
     GOO("goo", "application/octet-stream"),
+    /** Anycubic Photon S (big-endian header, bit-reversed RLE). */
+    PHOTONS("photon", "application/octet-stream"),
 }
 
 /**

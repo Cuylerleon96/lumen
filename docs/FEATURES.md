@@ -8,6 +8,16 @@ Method/reference for each *how* → `docs/research/feature-methods.md`. Feature 
 _Last updated: 2026-11-07 (drain-hole drilling landed in `:core`)._
 
 ## Progress log
+- 2026-11-07 — **Anycubic Photon S writer (item 3, first of the remaining formats).** `PhotonSWriter`
+  (`.photon`): big-endian 98-byte header, 224×168 preview, per-layer LayerDef + RLE, all streamed one
+  layer at a time. Clean-room from the open UVTools spec. Two bugs the tests caught, both worth
+  knowing: (a) the run length in the RLE byte is an **8-bit** bit-reverse, not 7 — the 7-bit version
+  encodes a 128-run as `0x7F` instead of `0xFF` and every run decodes to half its true length;
+  (b) the header buffer was 64 bytes for a 98-byte header, which only shows up as a
+  `BufferOverflowException`. Evidence: 96 tests, 0 failures — hand-computed RLE bytes, an independent
+  parser walking header → preview → layer defs (asserting every `dataSize` matches the RLE it
+  prefixes), and a full-res 1440×2560 three-layer pixel-for-pixel round-trip. `ResinFormat.PHOTONS`
+  added. **Remaining in item 3:** PW0/PWS (`AnycubicFile.cs`) and CBDDLP (`CrealityCXDLP*.cs`).
 - 2026-11-07 — **Drain-hole drilling (D.4) + boolean CSG land in `:core`.** New `Csg` (clean-room
   BSP boolean: `union`/`subtract`/`intersect`, plus `subtractLocal` which only runs the tree on the
   triangles near the tool) and `DrainHoles.drill()` (48-gon cylinder bit, 0.5 mm outset so the end cap
