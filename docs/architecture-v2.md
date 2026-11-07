@@ -31,6 +31,8 @@
 - **PlateScreen** — import, place/transform, orient, supports, hollow, slice. Works for any backend.
 - **SettingsSheet** — renders the sections the active backend declares (backend publishes its schema).
 - **PreviewScreen** — renders G-code toolpaths *or* layer images from the same `SliceOutcome`.
+- **Look & feel** — dark, modern, beautiful per `docs/design-language.md` (dark-first, one accent,
+  folded settings, quiet motion, 3D plate as hero).
 
 ## Feature build order (unified, backend-agnostic)
 1. Land the domain + `SlicingBackend` + registry; port the FDM and resin paths onto it (parity).
