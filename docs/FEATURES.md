@@ -7,6 +7,14 @@ Method/reference for each *how* → `docs/research/feature-methods.md`. Feature 
 
 _Last updated: 2026-11-06 (initial full inventory)._
 
+## Progress log
+- 2026-11-06 — FDM engine built (arm64 `.so`); **app APK builds**; `:core:test` **36 tests green**;
+  app **runs** on emulator (picker + resin workspace). P0 **motion settings** added + tested.
+  **REA** (reverse-engineering toolkit) installed on the build host; Lychee app structure mapped
+  (`docs/research/rea-lychee-notes.md`). QC pass #1: `docs/QC-REPORT.md`.
+- Still open (big): SLA engine graft (ADR 0003), supports, hollowing, AA, CTB/GOO, profiles,
+  estimation, prep tools.
+
 ---
 
 ## A. App shell & UX
@@ -44,8 +52,8 @@ _Last updated: 2026-11-06 (initial full inventory)._
 - ✅ Platform-free grayscale **PNG encoder**.
 ### D.2 Print settings
 - ✅ Layer height; exposure; bottom exposure; bottom layer count; light-off (single).
-- 🔜 **Motion: lift distance, retract distance, lift speed, bottom/retract speed** (normal + burn) — blocks any real print.
-- 🔜 **Rest timers** (wait before print / after print / after lift).
+- 🚧 **Motion: lift/retract distance+speed, bottom speeds, rest timers** — model + print-time wired
+  (tested, 36 tests pass). CTB/GOO writers still to emit them.
 - 📋 Bottom-layer taper (`burnLayerDecreasing`); grey-level compensation (`*Compensation`/`GreyValue`); PWM.
 - 💤 **TSMC two-stage motion**; **tilt/vat-printer motion** (tiltUp/Down cycles/delays/speeds).
 ### D.3 Supports
