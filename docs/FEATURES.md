@@ -5,9 +5,19 @@ Status marks: **✅ done** · **🚧 in progress** · **🔜 next (P0)** · **�
 Method/reference for each *how* → `docs/research/feature-methods.md`. Feature inventory origin →
 `docs/research/lychee-feature-gap.md`.
 
-_Last updated: 2026-11-07 (drain-hole drilling landed in `:core`)._
+_Last updated: 2026-11-07 (calibration towers + GitHub release pipeline)._
 
 ## Progress log
+- 2026-11-07 — **FDM calibration towers (item 6) + the release pipeline.** `CalibrationModels.fdmTower`
+  builds a stepped tower (segments unioned with real CSG, so no internal faces where the blocks meet)
+  and `GcodeCalibration.apply` rewrites the sliced G-code so each Z segment runs its own temperature /
+  flow / pressure-advance value. A boundary fires on the first move that *reaches* it — 0.2 mm layers
+  into 10 mm segments never land on a boundary, so an equality test would silently apply nothing — and
+  a move clearing several boundaries emits each. Everything not inserted is preserved byte for byte.
+  **Releases and updates now come from GitHub**: `update/info.json` is committed and is the manifest
+  the app fetches (raw master), pointing at the release asset; `server/publish.sh` builds, bumps
+  `versionCode` from that manifest and stages it, and `lumen-release` cuts the GitHub release and
+  uploads the APK. v0.7.2 is the first release cut through this path.
 - 2026-11-07 — **Anycubic Photon S writer (item 3, first of the remaining formats).** `PhotonSWriter`
   (`.photon`): big-endian 98-byte header, 224×168 preview, per-layer LayerDef + RLE, all streamed one
   layer at a time. Clean-room from the open UVTools spec. Two bugs the tests caught, both worth
@@ -75,6 +85,8 @@ _Last updated: 2026-11-07 (drain-hole drilling landed in `:core`)._
 - ✅ Slice → G-code; layer/toolpath preview; print time + filament estimate.
 - ✅ Tree/normal supports, brim, spiral vase (engine features).
 - 📋 G-code post-processing scripts; per-object settings; calibration wizards (flow/PA/temp).
+  — **✅ calibration towers + the G-code ramp** (`CalibrationModels.fdmTower` + `GcodeCalibration`:
+  temperature / flow / pressure-advance per segment). The in-app wizard UI is still todo.
 - 📋 Network print: Moonraker/Klipper, OctoPrint, PrusaLink, Bambu LAN/dev. — **✅ Moonraker /
   OctoPrint / PrusaLink done** (`PrinterUploader` + Send-to-printer dialog); Bambu LAN + post-processing
   scripts still todo.
