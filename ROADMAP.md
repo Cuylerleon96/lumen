@@ -24,6 +24,9 @@ raster → **SL1** (zip of PNGs + config.ini).
   SLA engine graft (supports/hollowing/AA) is still pending** — the naive rasterizer
   currently fills that role for a supported-less MVP. The `build-deps.sh` line that
   excludes OpenVDB must be reversed for hollowing.
+- **Next (ADR 0003, see `docs/NEXT-STEPS.md`):** decide **graft PrusaSlicer's SLA sources into our
+  Orca `libslic3r`** vs **a second PrusaSlicer `libslic3r` for resin** (recommended — SLA already
+  works there) — then reintroduce OpenVDB for hollowing.
 
 ## Phase 3 — Resin format writers (CTB, then GOO)
 Implement CTB v3+ (variable RLE + XOR key 0x67 + previews) and GOO.
