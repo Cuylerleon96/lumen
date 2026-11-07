@@ -1,5 +1,5 @@
 // sla_jni.cpp — JNI bridge exposing the PrusaSlicer SLA engine (libslic3r) to the Android app.
-// Kotlin side: io.github.whoxllm.orcamicro.core.resin.SlaEngine.nativeSlice(in, out, settingsJson)
+// Kotlin side: dev.lumen.slicer.core.resin.SlaEngine.nativeSlice(in, out, settingsJson)
 #include <jni.h>
 #include <cstdio>
 #include <string>
@@ -16,7 +16,7 @@
 using namespace Slic3r;
 
 extern "C" JNIEXPORT jint JNICALL
-Java_io_github_whoxllm_orcamicro_core_resin_SlaEngine_nativeSlice(
+Java_dev_lumen_slicer_core_resin_SlaEngine_nativeSlice(
     JNIEnv* env, jobject /*this*/, jstring inPath, jstring outPath, jstring settingsJson)
 {
     const char* in = env->GetStringUTFChars(inPath, nullptr);

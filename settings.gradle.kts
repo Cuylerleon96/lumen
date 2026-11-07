@@ -26,7 +26,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OrcaMicro"
+rootProject.name = "Lumen"
 
 include(":core")
 // -PcoreOnly builds just the pure-Kotlin core, for machines without the Android SDK.

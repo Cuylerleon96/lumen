@@ -1,0 +1,671 @@
+package dev.lumen.slicer.ui
+
+import android.app.Application
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import dev.lumen.slicer.core.Technology
+import dev.lumen.slicer.core.gcode.GcodeParser
+import dev.lumen.slicer.core.mesh.Mesh
+import dev.lumen.slicer.core.mesh.CalibrationModels
+import dev.lumen.slicer.core.mesh.ObjReader
+import dev.lumen.slicer.core.mesh.Placement
+import dev.lumen.slicer.core.mesh.StlFormatException
+import dev.lumen.slicer.core.mesh.StlReader
+import dev.lumen.slicer.core.mesh.StlWriter
+import dev.lumen.slicer.core.mesh.ThreeMfReader
+import dev.lumen.slicer.core.profiles.Catalog
+import dev.lumen.slicer.core.profiles.PresetRef
+import dev.lumen.slicer.core.profiles.PresetType
+import dev.lumen.slicer.core.profiles.first
+import dev.lumen.slicer.core.resin.MeshRasterizer
+import dev.lumen.slicer.core.resin.ResinBackend
+import dev.lumen.slicer.core.resin.ResinFormat
+import dev.lumen.slicer.core.resin.ResinPrinter
+import dev.lumen.slicer.core.resin.ResinProfile
+import dev.lumen.slicer.core.resin.ResinSettings
+import dev.lumen.slicer.core.resin.ResinSliceRequest
+import dev.lumen.slicer.core.resin.Sl1ToCtb
+import dev.lumen.slicer.core.resin.Sl1ToGoo
+import dev.lumen.slicer.core.resin.Sl1Writer
+import dev.lumen.slicer.core.slicing.SliceOutcome
+import dev.lumen.slicer.core.settings.BedShape
+import dev.lumen.slicer.core.settings.PresetEdits
+import dev.lumen.slicer.core.slicing.EngineResponse
+import dev.lumen.slicer.core.slicing.SliceInputs
+import dev.lumen.slicer.data.PresetSelection
+import dev.lumen.slicer.data.ProfileRepository
+import dev.lumen.slicer.data.SavedState
+import dev.lumen.slicer.data.SettingsStore
+import dev.lumen.slicer.engine.EngineClient
+import dev.lumen.slicer.engine.EngineEvent
+import dev.lumen.slicer.engine.EngineResources
+import dev.lumen.slicer.engine.SliceJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import java.io.File
+import kotlin.math.roundToInt
+
+/** Raw (unedited) presets for the current selection. */
+private class ResolvedPresets(val selection: PresetSelection, val machine: JsonObject, val process: JsonObject, val filament: JsonObject)
+
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+    private val app = application
+    private val profiles = ProfileRepository(application.assets)
+    private val store = SettingsStore(application)
+    private val engine = EngineClient(application)
+
+    private val _state = MutableStateFlow(UiState())
+    val state: StateFlow<UiState> = _state.asStateFlow()
+
+    private var presets: ResolvedPresets? = null
+    private var placementJob: Job? = null
+    private var sliceJob: Job? = null
+    private var firstRun = false
+
+    init {
+        viewModelScope.launch { load() }
+    }
+
+    // ---- loading -------------------------------------------------------------------------
+
+    private suspend fun load() {
+        try {
+            val saved = withContext(Dispatchers.IO) { store.load() }
+            val catalog = withContext(Dispatchers.IO) { profiles.catalog }
+            val selection = saved.selection?.takeIf { isValid(catalog, it) } ?: defaultSelection(catalog)
+            val resolved = withContext(Dispatchers.IO) { resolve(selection) }
+            presets = resolved
+            firstRun = saved.selection == null
+            val technology = saved.technology
+            _state.update {
+                it.copy(
+                    ready = true,
+                    catalog = catalog,
+                    selection = selection,
+                    technology = technology,
+                    edits = if (firstRun) PresetEdits() else saved.edits,
+                    resinPrinter = ResinPrinter.byName(saved.resinPrinterName)
+                        ?: ResinPrinter.byName("Elegoo Saturn (4K)") ?: ResinPrinter.builtIn.first(),
+                    resinSettings = saved.resinSettings ?: ResinSettings(),
+                    screen = startScreen(technology),
+                )
+            }
+            refreshInputs()
+            restoreModel(saved)
+            refreshLibrary()
+        } catch (e: Exception) {
+            _state.update { it.copy(ready = true, loadError = "Could not load the printer profiles: ${e.message}") }
+        }
+    }
+
+    // ---- project save/load (F) -----------------------------------------------------------
+
+    /** Export the current project (state + model) to [uri]. */
+    fun exportProject(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val tmp = File(app.cacheDir, "project.osproj")
+                store.exportProject(tmp)
+                app.contentResolver.openOutputStream(uri)?.use { o -> tmp.inputStream().use { it.copyTo(o) } }
+                    ?: throw IllegalStateException("could not open output")
+                tmp.delete()
+            }.onSuccess { showMessage("Project exported") }
+                .onFailure { showMessage("Export failed: ${it.message}") }
+        }
+    }
+
+    /** Import a project from [uri], replacing the current state + model, then reload. */
+    fun importProject(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                val tmp = File(app.cacheDir, "import.osproj")
+                app.contentResolver.openInputStream(uri)?.use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+                    ?: return@launch
+                val got = store.importProject(tmp)
+                tmp.delete(); got
+            }.getOrElse { showMessage("Import failed: ${it.message}"); false }
+            if (ok) load()
+        }
+    }
+
+    // ---- calibration (L) -----------------------------------------------------------------
+
+    /** Load a calibration/test model — a step bar to verify resin exposure + dimensional accuracy. */
+    fun loadCalibrationModel() {
+        viewModelScope.launch {
+            setModel("calibration.stl", CalibrationModels.stepBar(), centeredPlacement())
+            showMessage("Calibration step bar loaded")
+        }
+    }
+
+    private suspend fun restoreModel(saved: SavedState) {
+        val name = saved.modelName ?: return
+        val mesh = withContext(Dispatchers.IO) {
+            runCatching { StlReader.read(store.modelFile.readBytes()) }.getOrNull()
+        } ?: return
+        setModel(name, mesh, saved.placement ?: centeredPlacement())
+    }
+
+    private fun isValid(catalog: Catalog, selection: PresetSelection): Boolean {
+        val printer = catalog.printer(selection.vendor, selection.printer) ?: return false
+        return selection.process in catalog.processesFor(selection.vendor, printer) &&
+            selection.filament in catalog.filamentsFor(selection.vendor, printer)
+    }
+
+    private fun defaultSelection(catalog: Catalog): PresetSelection {
+        val vendor = catalog.vendor("Custom")?.takeIf { it.printers.isNotEmpty() } ?: catalog.printerVendors.first()
+        val printer = vendor.printers.firstOrNull { it.name == "MyMarlin 0.4 nozzle" } ?: vendor.printers.first()
+        return selectionFor(catalog, vendor.name, printer.name)
+    }
+
+    private fun selectionFor(catalog: Catalog, vendor: String, printerName: String): PresetSelection {
+        val printer = requireNotNull(catalog.printer(vendor, printerName))
+        val filaments = catalog.filamentsFor(vendor, printer)
+        val process = requireNotNull(catalog.defaultProcessFor(vendor, printer)) { "$printerName has no process presets" }
+        val filament = printer.defaultFilament?.takeIf { it in filaments }
+            ?: filaments.firstOrNull { it.name == "Generic PLA @System" }
+            ?: filaments.first()
+        return PresetSelection(vendor, printerName, process, filament)
+    }
+
+    private fun resolve(selection: PresetSelection) = ResolvedPresets(
+        selection = selection,
+        machine = profiles.resolve(selection.vendor, selection.printer),
+        process = profiles.resolve(selection.vendor, selection.process),
+        filament = profiles.resolve(selection.filament.vendor, selection.filament.name),
+    )
+
+    /** Recomputes the edited presets and everything derived from the printer (bed, fit). */
+    private fun refreshInputs() {
+        val resolved = presets ?: return
+        val edits = _state.value.edits
+        val inputs = SliceInputs.build(resolved.machine, resolved.process, resolved.filament, edits)
+        val bed = BedShape.of(inputs.machine) ?: BedShape.rectangle(0f, 0f, 220f, 220f)
+        val height = inputs.machine.first("printable_height")?.toFloatOrNull() ?: 250f
+        _state.update { state ->
+            state.copy(
+                inputs = inputs,
+                bed = bed,
+                printableHeight = height,
+                model = state.model?.let { withFit(it, bed, height) },
+            )
+        }
+    }
+
+    // ---- presets and settings ------------------------------------------------------------
+
+    fun selectPrinter(vendor: String, printer: String) {
+        val catalog = _state.value.catalog ?: return
+        applySelection(selectionFor(catalog, vendor, printer), PresetEdits())
+    }
+
+    fun selectProcess(name: String) {
+        val selection = _state.value.selection ?: return
+        applySelection(selection.copy(process = name), _state.value.edits.copy(process = emptyMap()))
+    }
+
+    fun selectFilament(ref: PresetRef) {
+        val selection = _state.value.selection ?: return
+        applySelection(selection.copy(filament = ref), _state.value.edits.copy(filament = emptyMap()))
+    }
+
+    private fun applySelection(selection: PresetSelection, edits: PresetEdits) {
+        viewModelScope.launch {
+            try {
+                val resolved = withContext(Dispatchers.IO) { resolve(selection) }
+                presets = resolved
+                _state.update { it.copy(selection = selection, edits = edits) }
+                refreshInputs()
+                persist()
+            } catch (e: Exception) {
+                showMessage("Could not load that preset: ${e.message}")
+            }
+        }
+    }
+
+    fun setEdit(type: PresetType, key: String, value: String?) {
+        _state.update { state ->
+            fun Map<String, String>.with() = if (value == null) this - key else this + (key to value)
+            val edits = state.edits
+            state.copy(
+                edits = when (type) {
+                    PresetType.MACHINE -> edits.copy(machine = edits.machine.with())
+                    PresetType.PROCESS -> edits.copy(process = edits.process.with())
+                    PresetType.FILAMENT -> edits.copy(filament = edits.filament.with())
+                },
+            )
+        }
+        refreshInputs()
+        persist()
+    }
+
+    fun resetEdits(type: PresetType) {
+        _state.update { state ->
+            val edits = state.edits
+            state.copy(
+                edits = when (type) {
+                    PresetType.MACHINE -> edits.copy(machine = emptyMap())
+                    PresetType.PROCESS -> edits.copy(process = emptyMap())
+                    PresetType.FILAMENT -> edits.copy(filament = emptyMap())
+                },
+            )
+        }
+        refreshInputs()
+        persist()
+    }
+
+    /** The unedited preset value, to show what a reset would go back to. */
+    fun presetFor(type: PresetType): JsonObject? = when (type) {
+        PresetType.MACHINE -> presets?.machine
+        PresetType.PROCESS -> presets?.process
+        PresetType.FILAMENT -> presets?.filament
+    }
+
+    // ---- model ---------------------------------------------------------------------------
+
+    fun openModel(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val (name, mesh) = withContext(Dispatchers.IO) {
+                    val bytes = app.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: throw StlFormatException("Could not open the file")
+                    val name = displayName(uri)
+                    val mesh = when {
+                        name.endsWith(".obj", ignoreCase = true) -> ObjReader.read(String(bytes))
+                        name.endsWith(".3mf", ignoreCase = true) -> ThreeMfReader.read(bytes)
+                        else -> StlReader.read(bytes)
+                    }
+                    store.modelFile.outputStream().use { StlWriter.write(mesh, it) }   // normalize to STL for restore
+                    runCatching { store.addToLibrary(name, store.modelFile.readBytes()) }
+                    name to mesh
+                }
+                setModel(name, mesh, centeredPlacement())
+                refreshLibrary()
+                _state.update { it.copy(lastResult = null) }
+                persist()
+            } catch (e: StlFormatException) {
+                showMessage("That file is not a usable STL: ${e.message}")
+            } catch (e: OutOfMemoryError) {
+                showMessage("That model is too large to load on this device")
+            } catch (e: Exception) {
+                showMessage("Could not open the model: ${e.message}")
+            }
+        }
+    }
+
+    /** Re-open a model from the on-device library (F). */
+    fun openFromLibrary(file: File) {
+        viewModelScope.launch {
+            try {
+                val name = store.displayName(file)
+                val mesh = withContext(Dispatchers.IO) {
+                    val bytes = file.readBytes()
+                    val m = StlReader.read(bytes)
+                    store.modelFile.outputStream().use { StlWriter.write(m, it) }
+                    m
+                }
+                setModel(name, mesh, centeredPlacement())
+                _state.update { it.copy(lastResult = null) }
+                persist()
+            } catch (e: Exception) {
+                showMessage("Could not open ${store.displayName(file)}: ${e.message}")
+            }
+        }
+    }
+
+    private fun refreshLibrary() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val files = store.libraryFiles()
+            _state.update { it.copy(library = files) }
+        }
+    }
+
+    private fun displayName(uri: Uri): String {
+        app.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) cursor.getString(index)?.let { return it }
+            }
+        }
+        return uri.lastPathSegment?.substringAfterLast('/') ?: "model.stl"
+    }
+
+    private fun centeredPlacement(): Placement {
+        val bed = _state.value.bed
+        return Placement(centerX = bed?.centerX ?: 110f, centerY = bed?.centerY ?: 110f)
+    }
+
+    private suspend fun setModel(name: String, mesh: Mesh, placement: Placement) {
+        val state = _state.value
+        val model = withContext(Dispatchers.Default) {
+            placedModel(name, mesh, placement, state.bed, state.printableHeight)
+        }
+        _state.update { it.copy(model = model, unitPrompt = unitPromptFor(name, mesh)) }
+    }
+
+    /**
+     * If the opened mesh is far larger than the build volume, it was probably exported in inches or
+     * feet (STL carries no units) — surface a prompt to pick the unit and rescale.
+     */
+    private fun unitPromptFor(name: String, mesh: Mesh): UnitPrompt? {
+        val state = _state.value
+        val bed = state.bed ?: return null
+        val s = mesh.bounds().size
+        val bedMax = maxOf(bed.width, bed.depth, state.printableHeight)
+        val modelMax = maxOf(s.x, s.y, s.z)
+        return if (modelMax > bedMax * 3f) UnitPrompt(name, s) else null
+    }
+
+    /** Rescale the current model for the chosen unit (mm = 1, in = 25.4, ft = 304.8). */
+    fun setUnitScale(unitScale: Float) {
+        val model = _state.value.model ?: return
+        _state.update { it.copy(unitPrompt = null) }
+        setPlacement(model.placement.copy(unitScale = unitScale))
+    }
+
+    fun dismissUnitPrompt() {
+        _state.update { it.copy(unitPrompt = null) }
+    }
+
+    fun setPlacement(placement: Placement) {
+        val current = _state.value.model ?: return
+        _state.update { it.copy(model = current.copy(placement = placement)) }
+        placementJob?.cancel()
+        placementJob = viewModelScope.launch {
+            val state = _state.value
+            val model = withContext(Dispatchers.Default) {
+                placedModel(current.name, current.mesh, placement, state.bed, state.printableHeight)
+            }
+            _state.update { it.copy(model = model) }
+            persist()
+        }
+    }
+
+    fun centerModel() {
+        val model = _state.value.model ?: return
+        val bed = _state.value.bed ?: return
+        setPlacement(model.placement.copy(centerX = bed.centerX, centerY = bed.centerY))
+    }
+
+    /** Scale the model down so it fits the build volume (a no-op if it already fits). */
+    fun fitToBuildVolume() {
+        val state = _state.value
+        val model = state.model ?: return
+        val bed = state.bed ?: return
+        val size = model.placed.bounds().size
+        if (size.x <= 0f || size.y <= 0f || size.z <= 0f) return
+        val factor = minOf(bed.width / size.x, bed.depth / size.y, state.printableHeight / size.z).coerceAtMost(1f)
+        if (factor >= 0.999f) return showMessage("Already fits the build volume")
+        val newScale = (model.placement.scalePercent * factor).coerceIn(10f, 400f)
+        setPlacement(model.placement.copy(scalePercent = newScale))
+        showMessage("Scaled to ${newScale.roundToInt()}% to fit")
+    }
+
+    fun removeModel() {
+        _state.update { it.copy(model = null, lastResult = null, slice = SliceState.Idle) }
+        viewModelScope.launch(Dispatchers.IO) { store.modelFile.delete() }
+        persist()
+    }
+
+    private fun placedModel(name: String, mesh: Mesh, placement: Placement, bed: BedShape?, height: Float): ModelState {
+        val placed = placement.place(mesh)
+        val size = placed.bounds().size
+        return withFit(ModelState(name, mesh, placement, placed, size, fits = true), bed, height)
+    }
+
+    private fun withFit(model: ModelState, bed: BedShape?, height: Float): ModelState {
+        if (bed == null) return model
+        val b = model.placed.bounds()
+        val margin = 0.01f
+        val fits = b.min.x >= bed.minX - margin && b.max.x <= bed.maxX + margin &&
+            b.min.y >= bed.minY - margin && b.max.y <= bed.maxY + margin &&
+            b.max.z <= height + margin
+        return model.copy(fits = fits)
+    }
+
+    // ---- slicing -------------------------------------------------------------------------
+
+    fun slice() {
+        val state = _state.value
+        val model = state.model ?: return showMessage("Open an STL file first")
+        val inputs = state.inputs ?: return
+        if (!model.fits) return showMessage("The model does not fit this printer's build volume. Move or scale it first.")
+        if (state.slice is SliceState.Running) return
+        sliceJob = viewModelScope.launch {
+            _state.update { it.copy(slice = SliceState.Running(0, "Preparing")) }
+            val job = withContext(Dispatchers.IO) { SliceJob.create(app, model.mesh, model.placement, inputs) }
+            val resources = withContext(Dispatchers.IO) { EngineResources.ensure(app) }
+            var response: EngineResponse? = null
+            var crashed = false
+            engine.slice(job.request(resources, model.placement).toJson()).collect { event ->
+                when (event) {
+                    is EngineEvent.Progress -> _state.update {
+                        it.copy(slice = SliceState.Running(event.progress.percent, event.progress.text))
+                    }
+                    is EngineEvent.Finished -> {
+                        response = event.response
+                    }
+                    EngineEvent.Crashed -> {
+                        crashed = true
+                    }
+                }
+            }
+            val result = response
+            when {
+                crashed -> fail("The slicing engine stopped unexpectedly.", job.logTail())
+                result == null -> fail("The slicing engine did not answer.", job.logTail())
+                !result.ok -> fail(explain(result), job.logTail())
+                else -> showPreview(job, result, model.name)
+            }
+        }
+    }
+
+    private suspend fun showPreview(job: SliceJob, result: EngineResponse, modelName: String) {
+        _state.update { it.copy(slice = SliceState.Running(100, "Preparing preview")) }
+        val gcode = result.gcodePath?.let { File(it) }?.takeIf { it.isFile } ?: job.gcode
+        try {
+            val toolpaths = withContext(Dispatchers.Default) { gcode.bufferedReader().use { GcodeParser.parse(it) } }
+            val done = SliceState.Done(gcode, toolpaths, result.warnings, modelName)
+            _state.update { it.copy(slice = SliceState.Idle, lastResult = done, screen = Screen.PREVIEW) }
+        } catch (e: OutOfMemoryError) {
+            fail("The G-code was written but is too large to preview on this device. You can still export it.", null)
+        }
+    }
+
+    private fun explain(result: EngineResponse): String {
+        val stage = when (result.stage) {
+            "config" -> "The print settings were rejected"
+            "model" -> "The model could not be read"
+            "validate" -> "OrcaSlicer cannot print this"
+            "export" -> "Writing the G-code failed"
+            else -> "Slicing failed"
+        }
+        return "$stage: ${result.error ?: "unknown error"}"
+    }
+
+    private fun fail(message: String, details: String?) {
+        _state.update { it.copy(slice = SliceState.Failed(message, details)) }
+    }
+
+    fun cancelSlice() {
+        sliceJob?.cancel()
+        sliceJob = null
+        _state.update { it.copy(slice = SliceState.Idle) }
+    }
+
+    fun dismissSliceError() {
+        _state.update { it.copy(slice = SliceState.Idle) }
+    }
+
+    fun exportGcode(uri: Uri) {
+        val result = _state.value.lastResult ?: return
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    app.contentResolver.openOutputStream(uri)?.use { out -> result.gcode.inputStream().use { it.copyTo(out) } }
+                        ?: throw IllegalStateException("Could not open the destination")
+                }
+                showMessage("G-code saved")
+            } catch (e: Exception) {
+                showMessage("Saving failed: ${e.message}")
+            }
+        }
+    }
+
+    // ---- navigation and messages ---------------------------------------------------------
+
+    fun navigate(screen: Screen) = _state.update { it.copy(screen = screen) }
+
+    fun back() = _state.update { it.copy(screen = homeScreen()) }
+
+    // ---- technology choice + the resin (MSLA) side ---------------------------------------
+
+    fun chooseTechnology(technology: Technology) {
+        _state.update { it.copy(technology = technology, screen = startScreen(technology)) }
+        persist()
+    }
+
+    /** Return to the technology picker (from Settings) without forgetting the choice. */
+    fun switchTechnology() = _state.update { it.copy(screen = Screen.TECHNOLOGY) }
+
+    private fun startScreen(technology: Technology?): Screen = when (technology) {
+        null -> Screen.TECHNOLOGY
+        Technology.FDM -> if (firstRun) Screen.PRESETS else Screen.PLATE
+        Technology.RESIN -> Screen.RESIN
+    }
+
+    private fun homeScreen(): Screen = if (_state.value.technology == Technology.RESIN) Screen.RESIN else Screen.PLATE
+
+    fun selectResinPrinter(name: String) {
+        ResinPrinter.byName(name)?.let { printer ->
+            _state.update { it.copy(resinPrinter = printer) }
+            persist()
+        }
+    }
+
+    /** Override the resin export format (null = Auto / printer's native format). */
+    fun setFormatOverride(format: ResinFormat?) {
+        _state.update { it.copy(formatOverride = format) }
+        persist()
+    }
+
+    fun setResinSettings(settings: ResinSettings) {
+        _state.update { it.copy(resinSettings = settings) }
+        persist()
+    }
+
+    /** Load a resin exposure profile over the current settings (keeps motion + unrelated). */
+    fun applyResinProfile(name: String) {
+        val profile = ResinProfile.byName(name) ?: return
+        _state.update { it.copy(resinSettings = profile.applyTo(it.resinSettings)) }
+        persist()
+    }
+
+    /**
+     * Resin (MSLA) slice. Routes through [ResinBackend], which prefers the native PrusaSlicer SLA
+     * engine (supports + hollowing + rasterize → SL1) and falls back to the naive rasterizer when the
+     * native library is unavailable.
+     */
+    fun sliceResin() {
+        val state = _state.value
+        val model = state.model ?: return showMessage("Open an STL file first")
+        val printer = state.resinPrinter ?: return showMessage("Pick a resin printer first")
+        val settings = state.resinSettings
+        if (state.resinSlice is SliceState.Running) return
+        viewModelScope.launch {
+            _state.update { it.copy(resinSlice = SliceState.Running(0, "Slicing")) }
+            try {
+                val out = withContext(Dispatchers.Default) {
+                    val base = model.name.substringBeforeLast('.').ifBlank { "print" }
+                    val sl1 = File(app.cacheDir, "$base.sl1")
+                    // The SLA engine's bed is centred on the origin, so place the model there (the
+                    // FDM-bed placement would push it off-plate → empty layers).
+                    val resinPlacement = model.placement.copy(centerX = 0f, centerY = 0f)
+                    val placedMesh = resinPlacement.place(model.mesh)
+                    val request = ResinSliceRequest(placedMesh, printer, settings, base, app.cacheDir)
+                    sl1.outputStream().use { stream ->
+                        val outcome = ResinBackend.slice(stream, request) { percent, text ->
+                            _state.update { it.copy(resinSlice = SliceState.Running(percent, text)) }
+                        }
+                        (outcome as? SliceOutcome.Layers)?.warnings?.takeIf { it.isNotEmpty() }?.let {
+                            throw IllegalStateException(it.joinToString("; "))
+                        }
+                    }
+                    // Re-container into the printer's native format (CTB for Chitubox-family, else SL1).
+                    val fmt = _state.value.formatOverride ?: printer.format
+                    if (fmt == ResinFormat.SL1) {
+                        sl1
+                    } else {
+                        val heightMm = model.size.z.toDouble()
+                        val printTime = settings.estimatedPrintTimeSec(heightMm).toInt()
+                        val dst = File(app.cacheDir, "$base.${fmt.ext}")
+                        dst.outputStream().use { o ->
+                            when (fmt) {
+                                ResinFormat.GOO -> Sl1ToGoo.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
+                                else -> Sl1ToCtb.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
+                            }
+                        }
+                        sl1.delete()
+                        dst
+                    }
+                }
+                _state.update { it.copy(resinSlice = SliceState.Idle, resinOutput = out) }
+                showMessage("Resin slice written: ${out.name}")
+            } catch (e: OutOfMemoryError) {
+                _state.update { it.copy(resinSlice = SliceState.Failed("That model is too large to slice on this device.", null)) }
+            } catch (e: Exception) {
+                _state.update { it.copy(resinSlice = SliceState.Failed("Resin slicing failed: ${e.message}", null)) }
+            }
+        }
+    }
+
+    fun saveResinOutput(uri: Uri) {
+        val out = _state.value.resinOutput ?: return
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    app.contentResolver.openOutputStream(uri)?.use { dst -> out.inputStream().use { it.copyTo(dst) } }
+                        ?: throw IllegalStateException("Could not open the destination")
+                }
+                showMessage("Saved ${out.name}")
+            } catch (e: Exception) {
+                showMessage("Saving failed: ${e.message}")
+            }
+        }
+    }
+
+    fun cancelResinSlice() {
+        _state.update { it.copy(resinSlice = SliceState.Idle) }
+    }
+
+    fun dismissResinError() {
+        _state.update { it.copy(resinSlice = SliceState.Idle) }
+    }
+
+    fun showMessage(message: String) = _state.update { it.copy(message = message) }
+
+    fun consumeMessage() = _state.update { it.copy(message = null) }
+
+    private fun persist() {
+        val state = _state.value
+        val saved = SavedState(
+            selection = state.selection,
+            edits = state.edits,
+            modelName = state.model?.name,
+            placement = state.model?.placement,
+            technology = state.technology,
+            resinPrinterName = state.resinPrinter?.name,
+            resinSettings = state.resinSettings,
+        )
+        viewModelScope.launch(Dispatchers.IO) { runCatching { store.save(saved) } }
+    }
+}

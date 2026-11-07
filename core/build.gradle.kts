@@ -25,7 +25,7 @@ dependencies {
 
 // Builds the printer catalog the app ships (see CatalogTool).
 application {
-    mainClass.set("io.github.whoxllm.orcamicro.core.profiles.CatalogTool")
+    mainClass.set("dev.lumen.slicer.core.profiles.CatalogTool")
 }
 
 tasks.test {

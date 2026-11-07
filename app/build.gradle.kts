@@ -21,11 +21,11 @@ val releaseKeystore: File? = providers.environmentVariable("ORCAMICRO_KEYSTORE")
     ?.takeIf { it.isNotBlank() }?.let { file(it) }
 
 android {
-    namespace = "io.github.whoxllm.orcamicro"
+    namespace = "dev.lumen.slicer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "io.github.whoxllm.orcamicro"
+        applicationId = "dev.lumen.slicer"
         minSdk = 28
         targetSdk = 35
         // Overridable so the update server can bump it per publish (server/publish.sh).
@@ -37,7 +37,7 @@ android {
             abiFilters += "arm64-v8a"
         }
         buildConfigField("String", "ORCA_VERSION", "\"$orcaTag\"")
-        buildConfigField("String", "SOURCE_URL", "\"https://github.com/whoxllm/OrcaMicro\"")
+        buildConfigField("String", "SOURCE_URL", "\"https://github.com/cuyler/lumen\"")
     }
 
     signingConfigs {
@@ -128,7 +128,7 @@ val buildOrcaCatalog by tasks.registering(JavaExec::class) {
     description = "Indexes the bundled printer profiles into orca/catalog.json."
     dependsOn(copyOrcaResources)
     classpath = catalogTool
-    mainClass.set("io.github.whoxllm.orcamicro.core.profiles.CatalogTool")
+    mainClass.set("dev.lumen.slicer.core.profiles.CatalogTool")
     val profiles = generatedAssets.map { it.dir("orca/profiles") }
     val catalog = generatedAssets.map { it.file("orca/catalog.json") }
     inputs.dir(profiles)
