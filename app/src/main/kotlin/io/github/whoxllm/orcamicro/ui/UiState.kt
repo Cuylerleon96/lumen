@@ -33,6 +33,9 @@ sealed interface SliceState {
     data class Failed(val message: String, val details: String?) : SliceState
 }
 
+/** Shown when an opened model is far larger than the build volume — ask which unit the file uses. */
+data class UnitPrompt(val name: String, val sizeMm: Vec3)
+
 data class UiState(
     val ready: Boolean = false,
     val loadError: String? = null,
@@ -57,4 +60,6 @@ data class UiState(
     val resinSlice: SliceState = SliceState.Idle,
     /** The last resin slice written to disk, ready to save/share. */
     val resinOutput: File? = null,
+    /** Pending "which units is this file in?" prompt for an oversized model. */
+    val unitPrompt: UnitPrompt? = null,
 )

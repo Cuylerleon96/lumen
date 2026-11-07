@@ -123,6 +123,7 @@ fun ResinPlateScreen(state: UiState, viewModel: MainViewModel) {
         ResinSettingsSheet(state, viewModel, onDismiss = { showSettings = false })
     }
     ResinSliceDialog(state.resinSlice, viewModel::cancelResinSlice, viewModel::dismissResinError)
+    UnitPromptDialog(state, viewModel)
 }
 
 @Composable

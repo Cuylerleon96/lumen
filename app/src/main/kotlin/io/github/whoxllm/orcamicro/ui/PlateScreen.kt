@@ -123,6 +123,7 @@ fun PlateScreen(state: UiState, viewModel: MainViewModel) {
             onDismiss = { showPlacement = false },
         )
     }
+    UnitPromptDialog(state, viewModel)
 }
 
 @Composable

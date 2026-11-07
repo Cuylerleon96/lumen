@@ -266,7 +266,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val model = withContext(Dispatchers.Default) {
             placedModel(name, mesh, placement, state.bed, state.printableHeight)
         }
-        _state.update { it.copy(model = model) }
+        _state.update { it.copy(model = model, unitPrompt = unitPromptFor(name, mesh)) }
+    }
+
+    /**
+     * If the opened mesh is far larger than the build volume, it was probably exported in inches or
+     * feet (STL carries no units) — surface a prompt to pick the unit and rescale.
+     */
+    private fun unitPromptFor(name: String, mesh: Mesh): UnitPrompt? {
+        val state = _state.value
+        val bed = state.bed ?: return null
+        val s = mesh.bounds().size
+        val bedMax = maxOf(bed.width, bed.depth, state.printableHeight)
+        val modelMax = maxOf(s.x, s.y, s.z)
+        return if (modelMax > bedMax * 3f) UnitPrompt(name, s) else null
+    }
+
+    /** Rescale the current model for the chosen unit (mm = 1, in = 25.4, ft = 304.8). */
+    fun setUnitScale(unitScale: Float) {
+        val model = _state.value.model ?: return
+        _state.update { it.copy(unitPrompt = null) }
+        setPlacement(model.placement.copy(unitScale = unitScale))
+    }
+
+    fun dismissUnitPrompt() {
+        _state.update { it.copy(unitPrompt = null) }
     }
 
     fun setPlacement(placement: Placement) {

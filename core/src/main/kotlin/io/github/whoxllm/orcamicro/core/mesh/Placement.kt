@@ -16,13 +16,15 @@ data class Placement(
     val rotationY: Float = 0f,
     val rotationZ: Float = 0f,
     val scalePercent: Float = 100f,
+    /** Extra uniform scale for unit conversion (STL has no units; mm = 1, in = 25.4, ft = 304.8). */
+    val unitScale: Float = 1f,
     val centerX: Float = 0f,
     val centerY: Float = 0f,
 ) {
     /** Rotation and scale only, about the model centre: the mesh written for the engine. */
     fun orient(mesh: Mesh): Mesh {
         val c = mesh.bounds().center
-        val s = scalePercent / 100f
+        val s = scalePercent / 100f * unitScale
         val m = rotationMatrix(rotationX, rotationY, rotationZ)
         return mesh.map { x, y, z, out ->
             val dx = x - c.x
