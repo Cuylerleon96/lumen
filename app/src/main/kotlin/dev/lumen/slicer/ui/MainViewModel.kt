@@ -30,6 +30,7 @@ import dev.lumen.slicer.core.resin.ResinSettings
 import dev.lumen.slicer.core.resin.ResinSliceRequest
 import dev.lumen.slicer.core.resin.Sl1ToCtb
 import dev.lumen.slicer.core.resin.Sl1ToGoo
+import dev.lumen.slicer.core.resin.Sl1ToPw
 import dev.lumen.slicer.core.resin.Sl1Writer
 import dev.lumen.slicer.core.slicing.SliceOutcome
 import dev.lumen.slicer.core.settings.BedShape
@@ -621,17 +622,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             throw IllegalStateException(it.joinToString("; "))
                         }
                     }
-                    // Re-container into the printer's native format (CTB for Chitubox-family, else SL1).
+                    // Re-container into the printer's native format. The extension comes from the
+                    // printer, not the format: Anycubic discriminates its variants by extension
+                    // (pwmx/pwmb) while sharing one payload codec.
                     val fmt = _state.value.formatOverride ?: printer.format
                     if (fmt == ResinFormat.SL1) {
                         sl1
                     } else {
                         val heightMm = model.size.z.toDouble()
                         val printTime = settings.estimatedPrintTimeSec(heightMm).toInt()
-                        val dst = File(app.cacheDir, "$base.${fmt.ext}")
+                        val dst = File(app.cacheDir, "$base.${printer.outputExtension}")
                         dst.outputStream().use { o ->
                             when (fmt) {
                                 ResinFormat.GOO -> Sl1ToGoo.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
+                                ResinFormat.ANYCUBIC -> Sl1ToPw.convert(
+                                    sl1.readBytes(), settings, printer, heightMm, printTime, o,
+                                    extension = printer.outputExtension,
+                                )
                                 else -> Sl1ToCtb.convert(sl1.readBytes(), settings, printer, heightMm, printTime, o)
                             }
                         }

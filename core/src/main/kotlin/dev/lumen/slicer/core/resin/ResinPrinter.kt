@@ -12,6 +12,15 @@ enum class ResinFormat(val ext: String, val mime: String) {
     GOO("goo", "application/octet-stream"),
     /** Anycubic Photon S (big-endian header, bit-reversed RLE). */
     PHOTONS("photon", "application/octet-stream"),
+    /**
+     * Anycubic Photon PW0 family — the native format of the machines this project targets.
+     *
+     * `pw0` is only the default extension: Anycubic discriminates its variants by **filename
+     * extension**, not by any header byte (they all start with the same 12-byte "ANYCUBIC" mark), so
+     * the concrete one comes from [ResinPrinter.fileExtension] — `pwmx` for the Mono X, `pwmb` for the
+     * Mono X 6K. The extension also selects the codec: only `.pws` is bit-plane, the rest are nibble.
+     */
+    ANYCUBIC("pw0", "application/octet-stream"),
 }
 
 /**
@@ -30,7 +39,15 @@ data class ResinPrinter(
     val buildHeightMm: Double,
     /** Native file format this machine consumes. */
     val format: ResinFormat = ResinFormat.CTB,
+    /**
+     * The concrete extension to write when it differs from [format].ext. Anycubic picks its variant by
+     * extension (`pwmx`, `pwmb`, `pwms`, …) while sharing one payload codec, so the format alone cannot
+     * say which one a machine reads.
+     */
+    val fileExtension: String? = null,
 ) {
+    /** The extension a sliced file for this machine should carry. */
+    val outputExtension: String get() = fileExtension ?: format.ext
     val buildWidthMm: Double get() = resolutionX * pixelSizeMicrons / 1000.0
     val buildDepthMm: Double get() = resolutionY * pixelSizeMicrons / 1000.0
 
@@ -43,14 +60,16 @@ data class ResinPrinter(
             // Anycubic first: these are the machines this project is actually developed against.
             // Verify a pitch arithmetically (see ResinPrinterTest), but check it against the PANEL --
             // a published build volume is the printable area and can be smaller. See the 6K note.
-            ResinPrinter("Anycubic Photon Mono X", 3840, 2400, 50.0, 245.0),
+            ResinPrinter("Anycubic Photon Mono X", 3840, 2400, 50.0, 245.0,
+                format = ResinFormat.ANYCUBIC, fileExtension = "pwmx"),
             // 34.4 um, NOT 34.0. The pitch is a property of the PANEL, and two independent sources
             // agree: the machine table Anycubic's own files carry (198.15 x 123.84 mm, per UVTools
             // AnycubicFile.cs) and the marketed 9.25" diagonal (which implies 34.59 um). Anycubic's
             // published build volume (195.84 x 122.4 mm) is the PRINTABLE AREA -- slightly smaller
             // than the panel -- and dividing that by 5760 makes 34.0 come out exact, which is what
             // made it look right. Using the printable area as the pitch scales every print by 1.2%.
-            ResinPrinter("Anycubic Photon Mono X 6K", 5760, 3600, 34.4, 245.0),
+            ResinPrinter("Anycubic Photon Mono X 6K", 5760, 3600, 34.4, 245.0,
+                format = ResinFormat.ANYCUBIC, fileExtension = "pwmb"),
             ResinPrinter("Anycubic Photon Mono 4K", 3840, 2400, 34.5, 165.0),
             ResinPrinter("Elegoo Saturn 2 (8K)", 7680, 4320, 28.5, 250.0),
             ResinPrinter("Elegoo Saturn (4K)", 3840, 2400, 50.0, 200.0),

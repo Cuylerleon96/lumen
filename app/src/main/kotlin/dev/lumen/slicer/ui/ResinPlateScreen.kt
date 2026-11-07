@@ -209,7 +209,7 @@ private fun ResinSettingsSheet(state: UiState, viewModel: MainViewModel, onDismi
             NumField("Light-off delay (s)", s.lightOffSec) { viewModel.setResinSettings(s.copy(lightOffSec = it)) }
             Text("Output format", style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf<ResinFormat?>(null, ResinFormat.SL1, ResinFormat.CTB, ResinFormat.GOO).forEach { f ->
+                listOf<ResinFormat?>(null, ResinFormat.SL1, ResinFormat.CTB, ResinFormat.GOO, ResinFormat.ANYCUBIC).forEach { f ->
                     FilterChip(
                         selected = state.formatOverride == f,
                         onClick = { viewModel.setFormatOverride(f) },
