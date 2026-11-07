@@ -20,7 +20,8 @@ log() { echo "==> $*" >&2; }
 die() { echo "error: $*" >&2; exit 1; }
 
 fetch() { # fetch <name> <url>  (no checksum: SLA deps are upstream releases)
-    local name=$1 url=$2 file="$DOWNLOAD_DIR/$name-$(basename "$url")"
+    local name=$1 url=$2
+    local file="$DOWNLOAD_DIR/$name-$(basename "$url")"
     [ -f "$file" ] || { log "Downloading $name"; curl -fsSL --retry 5 --retry-delay 10 -o "$file.part" "$url"; mv "$file.part" "$file"; }
     echo "$file"
 }
