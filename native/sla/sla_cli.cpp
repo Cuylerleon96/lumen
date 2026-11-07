@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <string>
 #include <libslic3r/Model.hpp>
-#include <libslic3r/Format/STL.hpp>
+#include <libslic3r/FileReader.hpp>
 #include <libslic3r/SLAPrint.hpp>
 #include <libslic3r/PrintConfig.hpp>
 
@@ -15,16 +15,16 @@ int main(int argc, char** argv)
     if (argc < 3) { std::fprintf(stderr, "usage: sla_cli in.stl out.sl1 [layer_height] [exposure]\n"); return 2; }
 
     Model model;
-    try { model = Model::read_from_file(argv[1]); }
+    try {
+        model = FileReader::load_model(argv[1]); // LoadAttribute::AddDefaultInstances by default
+    }
     catch (const std::exception& e) { std::fprintf(stderr, "load failed: %s\n", e.what()); return 1; }
     if (model.objects.empty()) { std::fprintf(stderr, "no objects\n"); return 1; }
-    model.add_default_instances();
 
     DynamicPrintConfig cfg;
     cfg.apply(SLAFullPrintConfig::defaults());
-    cfg.set_key_value("printer_technology", new ConfigOptionEnum<PrinterTechnology>(ptSLA));
-    if (argc > 3) cfg.set_key_value("layer_height", new ConfigOptionFloat(std::atof(argv[3])));
-    if (argc > 4) cfg.set_key_value("initial_exposure_time", new ConfigOptionFloats{ std::atof(argv[4]) });
+    cfg.option<ConfigOptionEnumGeneric>("printer_technology", true)->value = (int)ptSLA;
+    // (layer-height / exposure overrides added after the base pipeline is proven)
 
     SLAPrint print;
     print.set_status_callback([](const PrintBase::SlicingStatus& s) {
