@@ -165,4 +165,35 @@ class CsgTest {
         assertEquals(8_000_000.0, local.volumeMm3(), 1.0, "the pruned path sees no triangle to cut")
         assertEquals(8_000_000.0 - 64.0, full.volumeMm3(), 1.0, "the full boolean still cuts it")
     }
+
+    /**
+     * Winding robustness. The BSP algorithm reads inside/outside from triangle winding, so an
+     * inside-out STL — common in the wild — would make `subtract` *add* the tool. Measured before
+     * normalisation: a 160 mm³ box with inverted normals grew to 163 mm³ when a 31 mm³ bore was
+     * drilled through it. Every boolean now normalises its inputs and returns outward winding.
+     */
+    @Test
+    fun `an inside-out subject still subtracts`() {
+        val outward = box(10f, 10f, 10f)
+        val insideOut = outward.flipped()
+        val tool = box(4f, 4f, 4f)
+
+        assertTrue(insideOut.volumeMm3() < 0.0, "fixture must be inside-out: vol=${insideOut.volumeMm3()}")
+
+        val result = Csg.subtract(insideOut, tool)
+
+        assertEquals(1000.0 - 64.0, result.volumeMm3(), 0.05, "vol=${result.volumeMm3()}")
+    }
+
+    @Test
+    fun `a flipped tool subtracts the same volume`() {
+        val subject = box(10f, 10f, 10f)
+        val tool = box(4f, 4f, 4f)
+
+        assertEquals(
+            Csg.subtract(subject, tool).volumeMm3(),
+            Csg.subtract(subject, tool.flipped()).volumeMm3(),
+            0.05,
+        )
+    }
 }

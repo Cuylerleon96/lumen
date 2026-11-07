@@ -38,6 +38,12 @@ data class ResinSettings(
     val wallThicknessMm: Double = 2.0,
     /** Voxel closing distance in mm (fills thin features so the shell stays connected). */
     val hollowingClosingDistanceMm: Double = 0.5,
+    /**
+     * Drain holes drilled through the shell before slicing (D.4). Applied by the backend, not the UI:
+     * the engine hollows whatever mesh it is handed, so a hole must be part of the solid *before*
+     * hollowing turns it into a passage.
+     */
+    val drainHoles: List<DrainHole> = emptyList(),
 
     // ---- Layer repair (K) ----
     /** Remove floating specks + fill pinholes in each layer before export. */

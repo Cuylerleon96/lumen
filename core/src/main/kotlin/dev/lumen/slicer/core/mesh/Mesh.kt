@@ -92,6 +92,25 @@ class Mesh(val positions: FloatArray) {
     /** Absolute volume in mm³ (unsigned — for estimation regardless of winding). */
     fun volumeAbsMm3(): Double = kotlin.math.abs(volumeMm3())
 
+    /**
+     * A copy with every triangle's winding reversed — flips inside <-> outside.
+     * A closed mesh whose [volumeMm3] is negative is inside-out; CSG classifies purely from winding,
+     * so such a mesh must be flipped before a boolean (see `Csg.normalize`).
+     */
+    fun flipped(): Mesh {
+        val out = FloatArray(positions.size)
+        var i = 0
+        while (i < positions.size) {
+            for (k in 0 until 3) {
+                out[i + k] = positions[i + k]
+                out[i + 3 + k] = positions[i + 6 + k]
+                out[i + 6 + k] = positions[i + 3 + k]
+            }
+            i += FLOATS_PER_TRIANGLE
+        }
+        return Mesh(out)
+    }
+
     companion object {
         const val FLOATS_PER_TRIANGLE = 9
     }

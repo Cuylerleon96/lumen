@@ -1,6 +1,7 @@
 package dev.lumen.slicer.core.resin
 
 import dev.lumen.slicer.core.mesh.Mesh
+import dev.lumen.slicer.core.mesh.MeshPrimitives
 import dev.lumen.slicer.core.slicing.SliceOutcome
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -11,23 +12,16 @@ import java.io.ByteArrayOutputStream
 import java.util.zip.ZipInputStream
 
 class ResinBackendTest {
-    /** A solid box [sx]×[sy]×[sz] mm, sitting on the plate (z 0..sz). */
-    private fun box(sx: Float, sy: Float, sz: Float): Mesh {
-        val x0 = -sx / 2; val y0 = -sy / 2
-        val x1 = sx / 2; val y1 = sy / 2; val z1 = sz
-        val v = arrayOf(
-            floatArrayOf(x0, y0, 0f), floatArrayOf(x1, y0, 0f), floatArrayOf(x1, y1, 0f), floatArrayOf(x0, y1, 0f),
-            floatArrayOf(x0, y0, z1), floatArrayOf(x1, y0, z1), floatArrayOf(x1, y1, z1), floatArrayOf(x0, y1, z1),
-        )
-        val faces = intArrayOf(
-            0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1,
-            1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0,
-        )
-        val p = FloatArray(faces.size * 3)
-        var o = 0
-        for (f in faces) { p[o++] = v[f][0]; p[o++] = v[f][1]; p[o++] = v[f][2] }
-        return Mesh(p)
-    }
+    /**
+     * A solid box [sx]×[sy]×[sz] mm, sitting on the plate (z 0..sz).
+     *
+     * Outward-wound via [MeshPrimitives.box]. The hand-rolled version this replaced was wound
+     * inside-out (signed volume −160 mm³ for the 4×4×10 box): invisible to the rasterizer, whose
+     * even-odd fill ignores winding, but it made every drain-hole assertion read "the hole did
+     * nothing" — CSG classifies inside/outside from winding alone. See `CsgTest`.
+     */
+    private fun box(sx: Float, sy: Float, sz: Float): Mesh =
+        MeshPrimitives.box(sx, sy, sz, 0f, 0f, sz / 2f)
 
     @Test
     fun slicesThroughTheBackendInterface() {
@@ -55,5 +49,52 @@ class ResinBackendTest {
     @Test
     fun reportsTheTechnology() {
         assertEquals(dev.lumen.slicer.core.Technology.RESIN, ResinBackend.technology)
+    }
+
+    /**
+     * A drain hole has to reach the slice. Observable: the exposed area of a middle layer.
+     *
+     * Printer 64x64 px at 100 µm = a 6.4 x 6.4 mm bed, 0.1 mm per pixel, so a 1 mm radius bore is
+     * ~314 px (π·10²) out of the 1600 px a 4 x 4 mm cross-section fills — a ~7.7 point drop in
+     * coverage. Anything that silently drops the holes leaves the two coverages identical.
+     */
+    @Test
+    fun drainHolesReachTheSlice() {
+        val printer = ResinPrinter("t", 64, 64, 100.0, 10.0)
+        val settings = ResinSettings(layerHeightMm = 0.5)
+        val solid = ResinSliceRequest(box(4f, 4f, 10f), printer, settings, "solid")
+        val drilled = ResinSliceRequest(
+            box(4f, 4f, 10f),
+            printer,
+            settings.copy(drainHoles = listOf(DrainHole(0f, 0f, 10f, 0f, 0f, -1f, radiusMm = 1f))),
+            "drilled",
+        )
+
+        val solidCoverage = middleLayerCoverage(solid)
+        val drilledCoverage = middleLayerCoverage(drilled)
+
+        assertTrue(drilledCoverage < solidCoverage, "solid=$solidCoverage drilled=$drilledCoverage")
+        val expectedDrop = Math.PI * 10.0 * 10.0 / (64.0 * 64.0)
+        assertEquals(expectedDrop, solidCoverage - drilledCoverage, 0.01, "solid=$solidCoverage drilled=$drilledCoverage")
+    }
+
+    /** Slice [request] and report the exposed fraction of a layer halfway up the print. */
+    private fun middleLayerCoverage(request: ResinSliceRequest): Double {
+        val out = ByteArrayOutputStream()
+        ResinBackend.slice(out, request) { _, _ -> }
+        val names = mutableListOf<String>()
+        val pngs = mutableMapOf<String, ByteArray>()
+        val zip = ZipInputStream(ByteArrayInputStream(out.toByteArray()))
+        var e = zip.nextEntry
+        while (e != null) {
+            if (e.name.endsWith(".png")) {
+                names.add(e.name)
+                pngs[e.name] = zip.readBytes()
+            }
+            e = zip.nextEntry
+        }
+        val middle = names.sorted()[names.size / 2]
+        val img = PngDecoder.decode(pngs.getValue(middle))
+        return LayerImage(img.width, img.height, img.gray).coverage()
     }
 }

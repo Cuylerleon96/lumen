@@ -192,13 +192,25 @@ object Csg {
     // ---- public API ------------------------------------------------------------------------
 
     /** `a ∪ b` — everything in either solid. */
-    fun union(a: Mesh, b: Mesh): Mesh = combine(a, b, Operation.UNION)
+    fun union(a: Mesh, b: Mesh): Mesh = combineRaw(normalize(a), normalize(b), Operation.UNION)
 
     /** `a − b` — everything in `a` that is not in `b`. The drain-hole primitive. */
-    fun subtract(a: Mesh, b: Mesh): Mesh = combine(a, b, Operation.SUBTRACT)
+    fun subtract(a: Mesh, b: Mesh): Mesh = combineRaw(normalize(a), normalize(b), Operation.SUBTRACT)
 
     /** `a ∩ b` — only the shared volume. */
-    fun intersect(a: Mesh, b: Mesh): Mesh = combine(a, b, Operation.INTERSECT)
+    fun intersect(a: Mesh, b: Mesh): Mesh = combineRaw(normalize(a), normalize(b), Operation.INTERSECT)
+
+    /**
+     * Force outward winding. The BSP algorithm decides inside/outside **purely from triangle
+     * winding**, so an inside-out input silently *adds* the tool instead of removing it: a 160 mm³
+     * box with inverted normals grew to 163 mm³ when a 31 mm³ bore was drilled into it (measured —
+     * see `CsgTest`). Real-world STLs are regularly inside-out or inconsistently wound, so normalise
+     * on the way in instead of trusting the file. Every boolean therefore returns an outward-wound
+     * result.
+     *
+     * Only meaningful for a closed mesh; open patches are passed through untouched.
+     */
+    private fun normalize(mesh: Mesh): Mesh = if (mesh.volumeMm3() < 0.0) mesh.flipped() else mesh
 
     /**
      * `target − tool`, but only the neighbourhood of [tool] goes through the BSP tree: triangles of
@@ -216,7 +228,11 @@ object Csg {
      */
     fun subtractLocal(target: Mesh, tool: Mesh, marginMm: Float = 2f): Mesh {
         if (target.isEmpty || tool.isEmpty) return target
-        val tb = tool.bounds()
+        // Normalise the WHOLE mesh first: pruning splits it, and a half-flipped result would be
+        // mixed-winding (each fragment's own signed volume says nothing about the solid).
+        val subject = normalize(target)
+        val bit = normalize(tool)
+        val tb = bit.bounds()
         val minX = tb.min.x - marginMm
         val minY = tb.min.y - marginMm
         val minZ = tb.min.z - marginMm
@@ -226,7 +242,7 @@ object Csg {
 
         val far = ArrayList<Float>()
         val near = ArrayList<Float>()
-        val p = target.positions
+        val p = subject.positions
         var i = 0
         while (i < p.size) {
             var tMinX = Float.MAX_VALUE
@@ -257,12 +273,12 @@ object Csg {
             }
             i += Mesh.FLOATS_PER_TRIANGLE
         }
-        if (near.isEmpty()) return target
-        val cut = subtract(Mesh(near.toFloatArray()), tool)
+        if (near.isEmpty()) return subject
+        val cut = combineRaw(Mesh(near.toFloatArray()), bit, Operation.SUBTRACT)
         return Mesh(far.toFloatArray() + cut.positions)
     }
 
-    private fun combine(a: Mesh, b: Mesh, op: Operation): Mesh {
+    private fun combineRaw(a: Mesh, b: Mesh, op: Operation): Mesh {
         if (a.isEmpty) return if (op == Operation.UNION) b else Mesh(FloatArray(0))
         if (b.isEmpty) return if (op == Operation.INTERSECT) Mesh(FloatArray(0)) else a
         val na = Node(toPolygons(a))
