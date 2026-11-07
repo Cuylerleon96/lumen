@@ -22,25 +22,31 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,9 +57,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import io.github.whoxllm.orcamicro.core.gcode.Feature
 import io.github.whoxllm.orcamicro.core.gcode.GcodeStats
+import io.github.whoxllm.orcamicro.net.NetworkPrinter
+import io.github.whoxllm.orcamicro.net.PrinterKind
+import io.github.whoxllm.orcamicro.net.PrinterUploader
 import io.github.whoxllm.orcamicro.render.PreviewView
 import io.github.whoxllm.orcamicro.render.SceneView
 import io.github.whoxllm.orcamicro.render.ToolpathRenderer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -67,6 +79,8 @@ fun PreviewScreen(state: UiState, viewModel: MainViewModel) {
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         uri?.let { viewModel.exportGcode(it) }
     }
+    var showSend by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -154,17 +168,98 @@ fun PreviewScreen(state: UiState, viewModel: MainViewModel) {
                             )
                         }
                     }
-                    Button(
-                        onClick = { export.launch(gcodeName(result.modelName)) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    ) {
-                        Icon(Icons.Default.Done, null)
-                        Text("Save G-code", modifier = Modifier.padding(start = 8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Button(
+                            onClick = { export.launch(gcodeName(result.modelName)) },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.Default.Done, null)
+                            Text("Save", modifier = Modifier.padding(start = 8.dp))
+                        }
+                        OutlinedButton(onClick = { showSend = true }, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Send, null)
+                            Text("Send to printer", modifier = Modifier.padding(start = 8.dp))
+                        }
                     }
                 }
             }
         }
     }
+
+    if (showSend && result != null) {
+        SendToPrinterDialog(
+            file = result.gcode,
+            fileName = gcodeName(result.modelName),
+            onDismiss = { showSend = false },
+            onResult = { msg -> scope.launch { snackbar.showSnackbar(msg) } },
+        )
+    }
+}
+
+@Composable
+private fun SendToPrinterDialog(
+    file: File,
+    fileName: String,
+    onDismiss: () -> Unit,
+    onResult: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("printer", Context.MODE_PRIVATE) }
+    var url by remember { mutableStateOf(prefs.getString("url", "") ?: "") }
+    var apiKey by remember { mutableStateOf(prefs.getString("apiKey", "") ?: "") }
+    var kind by remember { mutableStateOf(PrinterKind.MOONRAKER) }
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("Send to printer") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (k in PrinterKind.entries) {
+                        FilterChip(selected = kind == k, onClick = { kind = k }, label = { Text(k.name.lowercase()) })
+                    }
+                }
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it; prefs.edit().putString("url", it.trim()).apply() },
+                    label = { Text("Printer URL") },
+                    placeholder = { Text("http://192.168.1.50") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = { apiKey = it; prefs.edit().putString("apiKey", it.trim()).apply() },
+                    label = { Text("API key (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text("Sends $fileName over WiFi.", style = MaterialTheme.typography.bodySmall)
+                if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodyMedium)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !busy && url.isNotBlank(),
+                onClick = {
+                    busy = true; status = "Sending…"
+                    val printer = NetworkPrinter("printer", kind, url.trim(), apiKey.trim().ifBlank { null })
+                    scope.launch {
+                        val res = withContext(Dispatchers.IO) { PrinterUploader.upload(file, printer) }
+                        busy = false
+                        when (res) {
+                            is PrinterUploader.Result.Ok -> { onResult(res.message); onDismiss() }
+                            is PrinterUploader.Result.Failed -> status = res.message
+                        }
+                    }
+                },
+            ) { Text("Send") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancel") } },
+    )
 }
 
 @Composable
