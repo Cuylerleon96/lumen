@@ -131,8 +131,11 @@ independent CTB validator)._
   verify on device that two objects with different `layer_height` really do differ in the G-code.
   Multi-model plate state (list + selected id, nearest-hit picking, arrange over N footprints) is the
   prerequisite and comes first.
-- 🔜 **Transparent transform sheet** (Cuyler 2026-11-07): the placement sheet must not hide the plate —
-  you judge a rotation by watching the model, so drop the modal scrim and make the sheet translucent.
+- ✅ **Transparent transform sheet** (Cuyler 2026-11-07, shipped in `0f0ba5e`): the placement sheet no
+  longer hides the plate. Both halves of the fix were needed — `scrimColor = Transparent` plus an 82 %
+  container **and** `skipPartiallyExpanded = false`, because a full-height sheet hides the model whatever
+  its alpha. Verified on screen: the plate and model stay visible above it and the plate's own hint text
+  shows through the sheet.
 - 📋 Onboarding / first-run tips; units + language settings (i18n).
 - 💤 Theme editor, splash, print history screen.
 
@@ -157,8 +160,13 @@ independent CTB validator)._
   was verified independently** (2026-11-07): the app's own FDM output parsed by an outside Python parser
   and plotted is clean nested perimeters, and the app renders the same G-code cleanly — so a reported
   preview "tangle" is neither the G-code nor the parser layout. The one odd-looking line in the preview
-  is the stock OrcaSlicer intro/prime extrusion, drawn green as `Custom`. Not yet reproduced on the
-  reporter's own model — see the handoff's Open item 1.
+  is the stock OrcaSlicer intro/prime extrusion, drawn green as `Custom`. **Then tested on the reporter's
+  own model at his own scale — 200 %, 57.1 × 154.5 × 33.0 mm, 165 layers, ~4× the motion commands — and it
+  STILL did not reproduce**: the preview and an independent parse agree, arc fitting (zero `G2`/`G3` in
+  265,076 commands) and the segment-count theory are both closed by measurement, and the model carries the
+  engine's own warning about floating regions. **Blocked on the reporter: a screenshot from his phone**,
+  because every run here uses the emulator's software renderer, and a real-GPU artefact is the one class of
+  cause this test cannot exclude — see the handoff's Open item 1.
 - ✅ Tree/normal supports, brim, spiral vase (engine features).
 - 📋 G-code post-processing scripts; per-object settings (see section A — the multi-model plate); calibration wizards (flow/PA/temp).
   — **✅ calibration towers + the G-code ramp** (`CalibrationModels.fdmTower` + `GcodeCalibration`:
