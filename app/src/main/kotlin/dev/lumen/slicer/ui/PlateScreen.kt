@@ -206,7 +206,10 @@ fun PlacementSheet(
      */
     plateBed: BedShape? = null,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // NOT skipPartiallyExpanded: the sheet must open at HALF height so the plate and the model stay
+    // visible above it while you drag the rotate slider — a full-height sheet hides the very thing you
+    // are judging, whatever its alpha. Drag it up for the rest of the controls.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val p = model.placement
     val bed = plateBed ?: state.bed
     ModalBottomSheet(
