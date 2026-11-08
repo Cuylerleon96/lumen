@@ -131,11 +131,11 @@ independent CTB validator)._
   verify on device that two objects with different `layer_height` really do differ in the G-code.
   Multi-model plate state (list + selected id, nearest-hit picking, arrange over N footprints) is the
   prerequisite and comes first.
-- ✅ **Transparent transform sheet** (Cuyler 2026-11-07, shipped in `0f0ba5e`): the placement sheet no
-  longer hides the plate. Both halves of the fix were needed — `scrimColor = Transparent` plus an 82 %
-  container **and** `skipPartiallyExpanded = false`, because a full-height sheet hides the model whatever
-  its alpha. Verified on screen: the plate and model stay visible above it and the plate's own hint text
-  shows through the sheet.
+- ✅ **Transparent transform sheet** (Cuyler 2026-11-07, shipped in `0f0ba5e` + `07e6ade`): the placement
+  sheet no longer hides the plate. Both halves of the fix were needed — `scrimColor = Transparent` plus an
+  82 % container **and** `skipPartiallyExpanded = false`, because a full-height sheet hides the model
+  whatever its alpha. Verified on screen: the plate and model stay visible above it and the plate's own
+  hint text shows through the sheet.
 - 📋 Onboarding / first-run tips; units + language settings (i18n).
 - 💤 Theme editor, splash, print history screen.
 
